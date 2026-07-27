@@ -13,6 +13,8 @@
  * Safe to read before running: it only touches files in this repository, and
  * refuses to run on a dirty tree so `git diff` shows exactly what it did.
  */
+import { basename } from 'node:path'
+
 import { Glob } from 'bun'
 
 const TEMPLATE_NAME = 'bun-hono-postgres-template'
@@ -59,6 +61,14 @@ function fail(message: string): never {
 const argv = Bun.argv.slice(2)
 const bare = argv.includes('--bare')
 
+/**
+ * Set by the `bun-create` postinstall hook, so `bun create <user>/<repo> my-api`
+ * bootstraps without a second command. In that mode the app name comes from the
+ * destination directory — the hook runs through `bun run`, which does not expand
+ * `$(basename $PWD)`, so the script has to resolve it itself.
+ */
+const fromCreate = argv.includes('--from-create')
+
 // Parse positionally: `--db` consumes the next token, so a value that happens
 // to equal the app name cannot swallow it.
 const positional: string[] = []
@@ -76,14 +86,22 @@ for (let i = 0; i < argv.length; i++) {
   positional.push(arg)
 }
 
-const appName = positional[0]
+const appName = positional[0] ?? (fromCreate ? basename(process.cwd()) : undefined)
 
 if (!appName) {
   fail('usage: bun scripts/init.ts <app-name> [--db <database>] [--bare]')
 }
 
 if (!/^[a-z][a-z0-9-]*$/.test(appName)) {
-  fail(`app name must be lower-case letters, digits and dashes: got "${appName}"`)
+  // Under `bun create` this is not worth aborting the scaffold for — the
+  // project is otherwise fine, it just keeps the template's names.
+  const message = `app name must be lower-case letters, digits and dashes: got "${appName}"`
+
+  if (!fromCreate) fail(message)
+
+  console.log(`  skipped rename: ${message}`)
+  console.log('  run `bun run init <app-name>` yourself when you have picked one.')
+  process.exit(0)
 }
 
 const dbName = dbFromFlag ?? `${appName.replace(/-/g, '_')}_db`
@@ -103,9 +121,14 @@ if (RESERVED_DB_NAMES.has(dbName)) {
 
 // ------------------------------------------------------------- safety check
 
-const dirty = Bun.spawnSync(['git', 'status', '--porcelain']).stdout.toString().trim()
-if (dirty) {
-  fail('working tree is dirty. Commit or stash first so `git diff` shows what this changed.')
+// `bun create` has just written the tree and run `git init`, so of course it is
+// dirty — the guard only makes sense for a manual run.
+if (!fromCreate) {
+  const dirty = Bun.spawnSync(['git', 'status', '--porcelain']).stdout.toString().trim()
+
+  if (dirty) {
+    fail('working tree is dirty. Commit or stash first so `git diff` shows what this changed.')
+  }
 }
 
 // ------------------------------------------------------------------ rename

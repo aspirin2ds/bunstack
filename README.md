@@ -7,6 +7,74 @@ A small, opinionated starting point: [Bun](https://bun.com) runtime,
 
 No `pg` or `postgres` package — Bun's built-in Postgres client does the work.
 
+## Starting a new app from this template
+
+Use Bun's own scaffolding CLI — one command, no extra tooling:
+
+```bash
+bun create <owner>/<this-repo> orders-api
+cd orders-api
+```
+
+`bun create` downloads the repo, installs dependencies, initialises a fresh git
+repo, and then this template's `bun-create` postinstall hook runs
+`scripts/init.ts`, which renames every template identifier — package name,
+OpenAPI title, and database — to match your destination directory.
+
+The renames land as **uncommitted changes** on top of `bun create`'s initial
+commit, so `git diff` shows you exactly what the bootstrap touched before you
+keep it.
+
+<details>
+<summary>Other ways to get a copy</summary>
+
+```bash
+bunx degit <owner>/<this-repo> orders-api   # no history, no hook
+git clone --depth 1 … && rm -rf .git        # manual
+```
+
+These skip the postinstall hook, so run the bootstrap yourself:
+
+```bash
+git init && git add -A && git commit -m init
+bun run init orders-api
+```
+</details>
+
+### Starting from an empty schema
+
+`bun create` keeps the users example as a working reference. To strip it:
+
+```bash
+bun run init orders-api --bare
+```
+
+That removes the users routes, service, tests and migrations, leaving an empty
+schema and a starter integration test. Run `bun run db:generate` afterwards for
+your first migration.
+
+`bun run init` refuses to run on a dirty tree, so `git diff` always shows exactly
+what it changed.
+
+**It also rejects a database name that would trip [LAND-01](./RULES.md)** — naming
+your database after a directory that exists at `/` (`srv`, `tmp`, `app`, …) makes
+`bun:sql` read the connection URL's path as a Unix-socket directory and fail with
+a bare `FailedToOpenSocket`. The default derived name (`my_api_db`) is always safe.
+
+Then:
+
+```bash
+cp .env.example .env
+bun install
+./scripts/fetch-docs.sh        # local copies of the upstream docs
+bun run db:generate            # --bare only: first migration from your schema
+docker compose up --build      # postgres -> migrate -> app
+bun run check                  # lint, rule checks, typecheck, tests
+```
+
+Read [RULES.md](./RULES.md) before your first real change — `bun run check:rules`
+enforces the mechanical parts, and the rest is what code review is for.
+
 ## Quick start
 
 ```bash

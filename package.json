@@ -23,6 +23,9 @@
     "check:rules": "bun scripts/check-rules.ts",
     "init": "bun scripts/init.ts"
   },
+  "bun-create": {
+    "postinstall": "scripts/init.ts --from-create"
+  },
   "dependencies": {
     "@hono/zod-openapi": "^1.5.1",
     "@scalar/hono-api-reference": "^0.11.11",
