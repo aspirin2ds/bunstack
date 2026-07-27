@@ -107,8 +107,11 @@ The `bun-sql` driver uses Bun's **built-in** Postgres client, so there is delibe
 bun install
 bun run dev           # watch mode, port 3000
 bun run start         # production
-bun test              # bun:test
 bun run typecheck     # tsc --noEmit
+
+bun run test              # unit, then integration
+bun run test:unit         # src/ — service layer mocked, no database needed
+bun run test:integration  # tests/ — real Postgres; skips itself if none is up
 
 bun run db:generate   # schema.ts -> SQL migration in drizzle/
 bun run db:migrate    # apply pending migrations
@@ -132,8 +135,32 @@ src/
     schema.ts     table definitions (source of truth for migrations)
     migrate.ts    programmatic migrator, run on container start
   lib/errors.ts   AppError + typed error responses
+tests/
+  integration/    service layer against real Postgres
+  helpers/        test database creation, migration, truncation
 drizzle/          generated migrations — commit these, never hand-edit
 ```
+
+## Testing
+
+Two suites, run as **separate processes on purpose**:
+
+- `test:unit` (`src/`) mocks the service layer with `mock.module`, so routes, validation
+  and error rendering are tested with no database.
+- `test:integration` (`tests/`) drives the real service layer against real Postgres.
+
+`mock.module` replaces a module for the **entire process**, so running both in one
+`bun test` invocation silently feeds the integration tests the mock — they pass while
+testing nothing. Keep integration tests outside `src/`, and don't collapse the scripts
+back into a bare `bun test`.
+
+Integration tests skip themselves when no database is reachable, so CI asserts they were
+not skipped — otherwise an unreachable database would look green.
+
+New business logic belongs in a service, with an integration test. Route tests should
+not be the only coverage a code path has: the unique-violation bug in
+[the landmines section](#2-the-sqlstate-is-on-errno-and-drizzle-wraps-the-error) lived in
+a service and was invisible to the mocked route tests.
 
 ## Conventions
 

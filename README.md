@@ -56,9 +56,17 @@ Every error shares one envelope:
 ## Scripts
 
 ```bash
-bun run dev         bun run start      bun test        bun run typecheck
-bun run db:generate bun run db:migrate bun run db:push bun run db:studio
+bun run dev         bun run start      bun run typecheck
+bun run db:generate bun run db:migrate bun run db:push  bun run db:studio
+
+bun run test              # unit, then integration
+bun run test:unit         # src/ — service layer mocked, no database needed
+bun run test:integration  # tests/ — real Postgres; skips itself if none is up
 ```
+
+The two suites run as **separate processes on purpose**: `mock.module` in the route
+tests replaces the service layer for the whole process, so running them together would
+silently feed the integration tests the mock instead of real SQL.
 
 ## Layout
 
@@ -71,6 +79,9 @@ src/
   services/       business logic, no Hono types
   db/             drizzle client, schema, migrator
   lib/            AppError, validate() wrapper
+tests/
+  integration/    service layer against real Postgres
+  helpers/        test database setup + truncation
 drizzle/          generated migrations (commit these)
 ```
 

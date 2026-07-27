@@ -15,7 +15,9 @@ RUN bun install --frozen-lockfile --production
 FROM base AS test
 COPY --from=deps /usr/src/app/node_modules ./node_modules
 COPY . .
-RUN bun run typecheck && bun test
+# Unit tests only: no database exists during an image build. Integration tests
+# run in CI, where a Postgres service is available.
+RUN bun run typecheck && bun run test:unit
 
 FROM base AS release
 ENV NODE_ENV=production

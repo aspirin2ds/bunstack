@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
-    "test": "bun test",
+    "test": "bun run test:unit && bun run test:integration",
+    "test:unit": "bun test src",
+    "test:integration": "bun test tests/integration",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun src/db/migrate.ts",
