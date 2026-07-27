@@ -37,7 +37,7 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/appdb_test
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -98,7 +98,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Builds the `test` stage, which runs typecheck and unit tests in-image.
       - name: Build image (runs in-image checks)
