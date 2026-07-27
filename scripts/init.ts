@@ -199,7 +199,49 @@ export const _placeholder = pgTable('_placeholder', {
 
   await Bun.$`rm -rf drizzle`.quiet()
 
+  // `bun test <dir>` exits non-zero when a directory has no test files, so the
+  // integration suite needs a starter. This one is also the smallest useful
+  // demonstration of the helpers your first real resource test will use.
+  await Bun.write(
+    'tests/integration/database.test.ts',
+    `import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
+
+import { closeDatabase, db } from '../../src/db/index.ts'
+import { isPostgresReachable, setupTestDatabase } from '../helpers/database.ts'
+
+/**
+ * Starter integration test. Copy this shape for your first resource: drive the
+ * service layer against real SQL, and let it skip when no database is running
+ * (\`docker compose up -d postgres\`).
+ *
+ * Must live outside \`src/\` — see RULES.md TEST-02.
+ */
+const reachable = await isPostgresReachable()
+
+if (!reachable) {
+  console.warn('\\n  ⚠ skipping integration tests: no PostgreSQL at DATABASE_URL\\n')
+}
+
+describe.skipIf(!reachable)('database', () => {
+  beforeAll(async () => {
+    await setupTestDatabase()
+  })
+
+  afterAll(async () => {
+    await closeDatabase()
+  })
+
+  it('is reachable and migrated', async () => {
+    const rows = await db.$client\`select 1 as ok\`
+
+    expect(rows[0]).toEqual({ ok: 1 })
+  })
+})
+`,
+  )
+
   console.log('  removed the users example (routes, service, tests, migrations)')
+  console.log('  wrote tests/integration/database.test.ts as a starting point')
 }
 
 // -------------------------------------------------------------- next steps
