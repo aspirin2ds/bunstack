@@ -94,10 +94,12 @@ cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 bun install
 
-docker compose up -d postgres   # local database
-bun run db:migrate              # apply migrations
-bun run dev                     # api :3000 and web :3001, in parallel
+bun run dev:up                  # database + migrations + api :3000 + web :3001
 ```
+
+`dev:up` creates either `.env` file from its example when missing, waits for
+PostgreSQL to become healthy, applies migrations, and starts both apps. PostgreSQL
+stays running after `Ctrl-C`; stop it with `docker compose down`.
 
 Or run the whole stack in containers:
 
@@ -192,6 +194,7 @@ Everything runs from the repository root and fans out with `bun --filter`; there
 no need to `cd` into a workspace, and no task orchestrator.
 
 ```bash
+bun run dev:up       # postgres + migrations + api + web
 bun run dev          # api + web in parallel      bun run dev:api / dev:web
 bun run build        # vite build for the web app
 bun run typecheck    # all three workspaces

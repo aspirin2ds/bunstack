@@ -20,6 +20,7 @@
   },
   "scripts": {
     "dev": "bun --filter './apps/*' dev",
+    "dev:up": "bun scripts/dev.ts",
     "dev:api": "bun run --filter '@repo/api' dev",
     "dev:web": "bun run --filter '@repo/web' dev",
     "build": "bun run --filter '@repo/web' build",
