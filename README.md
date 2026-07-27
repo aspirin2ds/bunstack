@@ -55,6 +55,25 @@ Every error shares one envelope:
 }
 ```
 
+## Logging
+
+Structured JSON to stdout via pino, one object per line, with a per-request child logger
+bound to the request id:
+
+```json
+{"level":"warn","time":"2026-07-27T08:49:16.471Z","pid":1,"hostname":"...",
+ "requestId":"3f92ce1b-…","req":{"method":"GET","path":"/nope"},
+ "res":{"status":404},"durationMs":0.289,"msg":"GET /nope 404"}
+```
+
+`bun run dev` pipes through the `pino-pretty` CLI for readable local output;
+`bun run dev:raw` gives the raw JSON. Deliberately **no pino transport** — that would run
+a worker thread for no benefit when the destination is stdout. Set verbosity with
+`LOG_LEVEL`; successful health checks are logged at `debug` so probes don't drown traffic.
+
+Use `c.get('logger')` inside a request and `logger` from `src/lib/logger.ts` elsewhere.
+Don't `console.log`.
+
 ## Scripts
 
 ```bash

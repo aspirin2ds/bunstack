@@ -3,17 +3,17 @@ import { Scalar } from '@scalar/hono-api-reference'
 import { bodyLimit } from 'hono/body-limit'
 import { cors } from 'hono/cors'
 import { HTTPException } from 'hono/http-exception'
-import { logger } from 'hono/logger'
-import { type RequestIdVariables, requestId } from 'hono/request-id'
+import { requestId } from 'hono/request-id'
 import { secureHeaders } from 'hono/secure-headers'
 import { timeout } from 'hono/timeout'
 
 import { checkDatabase } from './db/index.ts'
 import { env, isProduction } from './env.ts'
+import type { AppEnv } from './lib/context.ts'
 import { AppError, type ErrorCode, toErrorBody } from './lib/errors.ts'
+import { logger } from './lib/logger.ts'
+import { requestLogger } from './middleware/logging.ts'
 import { usersRoutes } from './routes/users.ts'
-
-type AppEnv = { Variables: RequestIdVariables }
 
 const CODE_BY_STATUS: Record<number, ErrorCode> = {
   400: 'bad_request',
@@ -44,8 +44,9 @@ export const app = new OpenAPIHono<AppEnv>({
   },
 })
 
+// requestId must come first: the request logger binds it into its child logger.
 app.use('*', requestId())
-app.use('*', logger())
+app.use('*', requestLogger)
 
 // Sensible security defaults (CSP, nosniff, frame-deny, referrer policy).
 app.use('*', secureHeaders())
@@ -121,8 +122,8 @@ app.onError((err, c) => {
     const code = CODE_BY_STATUS[err.status] ?? 'internal'
     return c.json(toErrorBody(new AppError(code, err.message), requestId), err.status)
   }
-
-  console.error(`[${requestId}] unhandled error`, err)
+  // `logger` may be unset if the failure happened before the middleware ran.
+  ;(c.get('logger') ?? logger).error({ err }, 'unhandled error')
 
   // Never leak an unexpected error's message to clients in production.
   return c.json(

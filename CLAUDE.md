@@ -98,6 +98,7 @@ know what you need — Drizzle's full file alone is ~340k tokens.
 | ORM | Drizzle over `drizzle-orm/bun-sql` | Typed schema, SQL-shaped queries, no extra pg client |
 | Validation + docs | Zod 4 via `@hono/zod-openapi` | One schema validates, types, **and** documents each route |
 | Lint/format | Biome 2 | Single fast tool; config matches the existing style |
+| Logging | pino 10 | Structured JSON to stdout; no built-in equivalent in Bun |
 
 The `bun-sql` driver uses Bun's **built-in** Postgres client, so there is deliberately no
 `pg` or `postgres` dependency. Do not add one.
@@ -233,6 +234,35 @@ Hono recommends `c.env` over `process.env` for portability across Workers/Deno/N
 This template is Bun-only and reads `process.env` **once at boot** in `src/env.ts` so
 misconfiguration fails immediately instead of on the first request that needs a variable.
 If you ever target Cloudflare Workers, that decision has to be revisited.
+
+## Logging
+
+Bun ships no structured logger, and `console.log` is unstructured — so **never
+`console.log` in this app**. Import `logger` from `src/lib/logger.ts`, or inside a request
+use `c.get('logger')`, which is already bound to that request's `requestId`.
+
+The shape of the setup, and why:
+
+- **JSON to stdout, one object per line.** Containers and orchestrators collect stdout;
+  no files, no rotation, no log shipper in-process.
+- **No pino `transport`.** Transports run a worker thread (`thread-stream`) that buys
+  nothing when the destination is already stdout, and worker threads are the historical
+  friction point for pino on Bun. Verified working on Bun 1.3.14 either way — this is a
+  "don't add a moving part you don't need" call, not a compatibility workaround.
+- **Pretty output in dev comes from the `pino-pretty` CLI**, piped in the `dev` script, so
+  no worker thread ever exists in the app process. `bun run dev:raw` gives raw JSON.
+- **String level labels and ISO timestamps**, overriding pino's numeric level and epoch
+  milliseconds, because that is what log aggregators index.
+- **Secrets are redacted** (`authorization`, `cookie`, `password`, `token`, `secret`,
+  `DATABASE_URL`) as defence in depth — nothing logs headers or bodies today.
+- **Successful health checks log at `debug`.** A probe every few seconds would otherwise
+  drown real traffic. Failing ones still log at `warn`/`error`.
+- `LOG_LEVEL=silent` in `.env.test` keeps suites readable.
+
+`src/middleware/logging.ts` replaces `hono/logger` and emits one record per completed
+request. Its test pins a subtlety: Hono routes a thrown handler error through `onError`
+before `next()` settles, so the completion record is still emitted for 5xx. That is
+internal Hono behaviour, so the test exists to catch it changing.
 
 ## Two `bun:sql` landmines
 

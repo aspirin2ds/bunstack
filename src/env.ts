@@ -10,6 +10,9 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().max(65535).default(3000),
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
 
+  // `silent` is used by the test env so suites don't emit JSON noise.
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+
   // Connection pool. Bun's defaults are max=10 / maxLifetime=0; these are
   // surfaced as env so the pool can be sized per deployment. Keep
   // DB_POOL_MAX * replicas below Postgres `max_connections` (default 100).
