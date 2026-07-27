@@ -11,7 +11,7 @@ source of truth**; if the two disagree, this one wins and `CLAUDE.md` should be 
 
 | Mark | Meaning |
 | --- | --- |
-| 🤖 | A tool fails on it — Biome, `tsc`, `bun run check:rules`, or CI. You will not merge a violation by accident. |
+| 🤖 | A tool fails on it — Biome, TypeScript, `bun run check:rules`, or CI. You will not merge a violation by accident. |
 | 🤖/👁 | Partly automated; the rest is on review. The note says which part. |
 | 👁 | Nobody checks it but a human. These are the ones worth reviewing for. |
 | 🔭 | Not implemented in this template yet; the rule applies when you add the feature. |
@@ -49,6 +49,143 @@ OpenAPI response schema type-checks that it happened.
 
 **ARCH-05** 👁 Shared types that middleware needs (`AppEnv`) live in `src/lib/context.ts`,
 not `app.ts`, so middleware can type its context without an import cycle.
+
+---
+
+## BUN — Runtime
+
+**This is a Bun application, not a Node application that happens to run on Bun.** Bun's
+compatibility layer means Node APIs mostly work, which is exactly why this needs to be a
+rule rather than a preference — the Node version is often the one a model or a Stack
+Overflow answer reaches for first.
+
+**BUN-01** 🤖 Application code uses Bun and Web APIs exclusively. Node.js built-in
+modules are forbidden, including compatibility modules for which Bun has no direct replacement.
+
+| Instead of | Use |
+| --- | --- |
+| `node:fs`, `node:fs/promises` | `Bun.file()`, `Bun.write()`, `Bun.Glob` |
+| `node:http`, `node:https` | `Bun.serve()`, `fetch()` |
+| `node:child_process` | `Bun.spawn()`, `Bun.$` |
+| `node:crypto` | the WebCrypto `crypto` global, `Bun.hash`, `Bun.password` |
+| `node:net`, `node:tls` | `Bun.connect()`, `Bun.listen()` |
+| `node:zlib` | `Bun.gzipSync()`, `Bun.inflateSync()` |
+| `node:test`, `node:assert` | `bun:test` and its `expect()` |
+| `node:readline` | `Bun.stdin`, the `prompt()` global |
+| `process.env` | `Bun.env` |
+| `pg`, `postgres` | `bun:sql` — see DEP-01 |
+| `bunx <cli>` | `bunx --bun <cli>` — see BUN-04 |
+
+*Why:* Bun's compatibility layer makes Node.js APIs easy to introduce accidentally. A
+single runtime vocabulary makes runtime assumptions visible and mechanically reviewable.
+When Bun has no direct equivalent, use a Web API or a small local implementation; do not
+open an exception silently.
+*Enforced by* `bun run check:rules`, which rejects every Node.js builtin import and the
+compatibility globals, plus Biome `noProcessEnv`.
+
+**BUN-02** 🤖 Do not use compatibility globals such as `process`, `Buffer`, or the
+`NodeJS` namespace. Use `Bun.env`, `Bun.argv`, `Bun.$`, Web typed arrays, and Web APIs.
+*Enforced by* `bun run check:rules`.
+
+**BUN-03** 👁 Prefer Web standards when the Bun API surface does not cover a task. For
+example, `apps/web/server.ts` resolves static assets with `new URL(...)`, which also
+collapses `..` segments per RFC 3986 for the traversal guard in SEC-05.
+
+**BUN-04** 🤖 Run JavaScript and TypeScript CLIs through **`bunx --bun`**. This applies
+inside package scripts and CI as well as at the terminal.
+*Why:* bunx honours the CLI's shebang, so plain `bunx drizzle-kit` runs a Node binary under
+Node — and `drizzle.config.ts` then dies with a bare `Bun is not defined`, which reads as a
+broken config rather than the wrong runtime. `--bun` forces the Bun runtime, which is what
+lets the config use `Bun.env` like everything else. Verified both ways on drizzle-kit
+0.31.10.
+*Enforced by* `bun run check:rules` for package scripts; CI uses the same spelling.
+
+**BUN-05** 👁 `drizzle-kit push` and `drizzle-kit studio` do not work in this stack, and the
+scripts for them have been removed rather than left broken.
+*Why:* both need a Node Postgres driver — they fail with *"please install either of 'pg',
+'postgres', '@neondatabase/serverless' or '@vercel/postgres'"* — and DEP-01 forbids adding
+one. `--bun` does not help; the driver requirement is independent of the runtime. Use
+`db:generate` + `db:migrate`, which go through Bun's own client. If you truly want Studio,
+adding `pg` as a **devDependency** is the only justification for it in this repo — say so in
+the commit.
+
+---
+
+## WS — Workspaces
+
+Layout: `apps/api` (Hono + Postgres), `apps/web` (TanStack Start), `packages/api-client`
+(the typed client between them). Reference material is cached under
+`.online-docs/bun/pm-*.md`.
+
+**WS-01** 🤖/👁 `apps/*` are deployable processes; `packages/*` are libraries consumed by
+them. An app never imports another app's source.
+*Why:* it is what keeps "two services" from decaying into one service in two directories.
+The moment `apps/web` reaches into `apps/api/src`, they can no longer be built, tested or
+deployed apart.
+*Biome blocks the web app from importing `@repo/api` (anything but `/types`); "packages
+hold no deployable process" is on review.*
+
+**WS-02** 🤖 Reference a sibling workspace as `"workspace:*"`, never a relative path or a
+`file:` URL.
+*Why:* Bun then links the local directory instead of resolving from npm, and `bun publish`
+substitutes the real version. A relative import bypasses the dependency graph, so
+`--filter` build ordering silently stops applying to it.
+*Enforced by* `bun run check:rules`, which rejects an import path climbing into
+`../../apps/` or `../../packages/`.
+
+**WS-03** 🤖 A dependency used by two or more workspaces is pinned once in the root
+`workspaces.catalog` and referenced as `"catalog:"`.
+*Why:* two `package.json` files drift. Zod, TypeScript and React resolving to different
+majors across the API and the web app produces type errors that read as unrelated bugs.
+*Enforced by* `bun run check:rules`, in both directions — a literal version in two
+packages fails, and so does a catalog entry nothing references. It caught `pino` and
+`pino-pretty` the day it was written.
+
+**WS-04** 🤖 The root `package.json` declares no runtime dependencies — it is the workspace
+manifest and script entry point only.
+*Why:* `--production` prunes root `devDependencies`, so a runtime import satisfied only by
+the root resolves in dev and fails in the release image.
+*Enforced by* `bun run check:rules`.
+
+**WS-05** 🤖/👁 The web app talks to the API over HTTP through the typed client. It may import
+`apps/api` **types** (`import type`), never its runtime code, and it holds no
+`DATABASE_URL`.
+*Why:* the type-only import is what makes the contract checked at compile time; a runtime
+import would pull Hono, Drizzle and the database pool into the web process and give the
+front end database credentials it has no reason to hold.
+*Biome bans `@repo/api` and `drizzle-orm` under `apps/web/src/**`, and CI asserts the
+internal `API_URL` never appears in served HTML. "Holds no `DATABASE_URL`" is on review —
+`apps/web/.env.example` is where to look.*
+
+**WS-06** 🤖 Declare what you import, in the `package.json` of the workspace that imports
+it. Do not rely on a dependency being visible because something else installed it.
+*Why:* Bun defaults new workspaces to the **isolated** linker, which makes phantom
+dependencies fail to resolve rather than working by accident. This is the rule the linker
+is enforcing for us, so state it plainly.
+*Enforced by* the linker itself. This is not theoretical: `types: ["bun-types"]` worked in
+the single-package repo only because `bun-types` was hoisted, and every workspace failed to
+typecheck until it became `types: ["bun"]`, naming the `@types/bun` each package declares.
+
+**WS-07** 👁 One `bun.lock` at the repository root, committed. See DEP-04.
+
+**WS-08** 🤖/👁 A release image that copies `node_modules` must copy the workspace sources at
+the same relative paths, in the same stage.
+*Why:* under the isolated linker `node_modules` is symlinks into `node_modules/.bun/`, and
+**workspace packages are symlinked to their source directories**. Copy the links without
+their targets and the image fails at startup with a module-not-found error that mentions
+nothing about symlinks. Verify with the compose smoke test, not by reading the Dockerfile —
+see the LAND lesson.
+*The same trap applies to a **build** stage, and there it is silent rather than loud:*
+`apps/web`'s build needs `apps/api/node_modules`, because it type-imports the API's source,
+which resolves Hono and Zod from the API's own tree. Omitting it produced no error — `AppType`
+degraded to `unknown` and the failure surfaced as "Type may not be serializable" on unrelated
+server functions. CI's stack smoke test is what covers this; the Dockerfiles cannot self-check.
+
+**WS-09** 👁 Run scripts with `bun run --filter`, and let Bun order them. Do not add a task
+orchestrator to get dependency-ordered builds.
+*Why:* `bun --filter '*' build` already waits for a dependency's build before starting its
+consumer's. Turbo or Nx would be a new dependency buying a feature the package manager
+ships (DEP-02). Add one when there is caching or remote-execution evidence, and say so.
 
 ---
 
@@ -207,12 +344,11 @@ not add ad-hoc "entering handler" logs.
 
 ## CFG — Configuration
 
-**CFG-01** 🤖 All configuration goes through `src/env.ts`. Never read `process.env`
+**CFG-01** 🤖 All configuration goes through `src/env.ts`. Never read `Bun.env`
 elsewhere.
 *Why:* the schema fails the process at boot on bad config, instead of at 3am on the first
 request that happens to need the variable.
-*Enforced by* Biome's `style/noProcessEnv`, with exemptions in `biome.json` for `env.ts`
-itself and `drizzle.config.ts` (which runs under drizzle-kit, outside the app's boot path).
+*Enforced by* review for direct `Bun.env` reads and by the environment modules' schemas.
 
 **CFG-02** 🤖 New config gets a Zod type, a sane default where one exists, and an entry in
 `.env.example`. Required-with-no-default is correct for anything that has no safe default
@@ -225,7 +361,7 @@ carries the shape, never real values.
 **CFG-04** 👁 Defaults must be safe for production, not convenient for development. CORS
 defaults to *not mounted*; the body limit defaults to 1 MiB.
 
-**CFG-05** 👁 Bun-only assumption is deliberate: `process.env` read once at boot rather
+**CFG-05** 👁 Bun-only assumption is deliberate: `Bun.env` is read once at boot rather
 than Hono's portable `c.env`. Revisit if this ever targets Cloudflare Workers.
 
 ---
@@ -316,8 +452,12 @@ multiple replicas they race.
 needs to distinguish "process wedged" from "database unreachable", and a liveness probe
 that hits the database turns a database blip into a restart loop.
 
-**OPS-06** 👁 Handle SIGTERM: stop the server, then close the pool. Exiting without
-draining leaves in-flight requests dead and backends for Postgres to time out.
+**OPS-06** 👁 Do not add Node.js signal APIs to application code. Bun currently documents
+OS signal listeners through its Node.js compatibility global and has no Bun-native
+listener. Containers therefore let the Bun runtime handle SIGTERM. If graceful draining
+becomes a hard requirement, implement it at the supervisor boundary until Bun exposes a
+native hook, and keep `closeDatabase()` for explicit lifecycle points such as migrations
+and tests.
 
 **OPS-07** 🤖 `bun run check` (lint + typecheck + tests) passes before commit. CI runs the
 same plus a containerized end-to-end smoke test.

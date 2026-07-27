@@ -2,8 +2,12 @@ node_modules/
 .env
 .env.local
 
-# Local cache of upstream docs (~6MB, regenerate with ./scripts/fetch-docs.sh)
+# Local cache of upstream docs (~8MB, regenerate with ./scripts/fetch-docs.sh)
 .online-docs/
+
+# Vite build output for the web app.
+apps/web/dist/
+
 *.log
 coverage/
 .DS_Store

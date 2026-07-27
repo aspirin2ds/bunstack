@@ -1,0 +1,35 @@
+{
+  "name": "@repo/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "module": "src/index.ts",
+  "exports": {
+    "./types": "./src/types.ts"
+  },
+  "scripts": {
+    "dev": "bun --watch src/index.ts | bunx --bun pino-pretty",
+    "dev:raw": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "typecheck": "bunx --bun tsc --noEmit",
+    "test": "bun run test:unit && bun run test:integration",
+    "test:unit": "bun test src",
+    "test:integration": "bun test tests/integration",
+    "db:generate": "bunx --bun drizzle-kit generate",
+    "db:migrate": "bun src/db/migrate.ts"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "^1.5.1",
+    "@scalar/hono-api-reference": "^0.11.11",
+    "drizzle-orm": "^0.45.2",
+    "hono": "catalog:",
+    "pino": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "drizzle-kit": "^0.31.10",
+    "pino-pretty": "catalog:",
+    "typescript": "catalog:"
+  }
+}

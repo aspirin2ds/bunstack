@@ -23,11 +23,12 @@ services:
       timeout: 5s
       retries: 10
 
-  # Applies pending migrations, then exits. The app waits for it to succeed, so
+  # Applies pending migrations, then exits. The API waits for it to succeed, so
   # `docker compose up` always starts against a migrated database.
   migrate:
     build:
       context: .
+      dockerfile: apps/api/Dockerfile
       target: release
     restart: 'no'
     environment:
@@ -37,9 +38,10 @@ services:
       postgres:
         condition: service_healthy
 
-  app:
+  api:
     build:
       context: .
+      dockerfile: apps/api/Dockerfile
       target: release
     restart: unless-stopped
     environment:
@@ -47,7 +49,7 @@ services:
       PORT: 3000
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-appdb}
     ports:
-      - '${PORT:-3000}:3000'
+      - '${API_PORT:-3000}:3000'
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,7 +57,34 @@ services:
         condition: service_completed_successfully
     healthcheck:
       test:
-        ['CMD-SHELL', 'bun -e "await fetch(\"http://localhost:3000/health\").then(r=>process.exit(r.ok?0:1))"']
+        ['CMD-SHELL', 'bun -e "if (!(await fetch(\"http://localhost:3000/health\")).ok) throw new Error(\"unhealthy\")"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: release
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      # The service name, not localhost: this is a container-to-container call on
+      # the compose network, and the browser never sees this URL (RULES.md WS-05).
+      API_URL: http://api:3000
+    ports:
+      - '${WEB_PORT:-3001}:3001'
+    # Waits for healthy, not just started: the first page render calls the API, so
+    # starting earlier would just serve an error to whoever is watching the logs.
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'bun -e "if (!(await fetch(\"http://localhost:3001/users\")).ok) throw new Error(\"unhealthy\")"']
       interval: 10s
       timeout: 5s
       retries: 5

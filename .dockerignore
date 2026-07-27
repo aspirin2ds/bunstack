@@ -1,4 +1,10 @@
+# The build context is the repository root for both images, so this has to cover
+# every workspace — a stray node_modules or dist would be copied over the one the
+# deps stage built (WS-08) and produce symlinks pointing at the host's paths.
 node_modules
+*/*/node_modules
+apps/*/dist
+apps/*/.output
 .git
 .gitignore
 Dockerfile*
@@ -6,9 +12,12 @@ docker-compose*
 .dockerignore
 README.md
 CLAUDE.md
+RULES.md
 LICENSE
+.online-docs
 .env
-.env.local
+.env.*
+!.env.example
 .vscode
 .idea
 coverage

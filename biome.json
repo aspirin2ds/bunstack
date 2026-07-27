@@ -7,7 +7,13 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!drizzle", "!.online-docs"]
+    "includes": [
+      "**",
+      "!apps/api/drizzle",
+      "!.online-docs",
+      "!apps/web/dist",
+      "!apps/web/src/routeTree.gen.ts"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -42,27 +48,14 @@
       "arrowParentheses": "always"
     }
   },
-  "assist": {
-    "enabled": true,
-    "actions": {
-      "source": {
-        "organizeImports": "on"
-      }
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
     }
   },
   "overrides": [
     {
-      "includes": ["src/env.ts", "drizzle.config.ts"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noProcessEnv": "off"
-          }
-        }
-      }
-    },
-    {
-      "includes": ["src/services/**"],
+      "includes": ["apps/api/src/services/**"],
       "linter": {
         "rules": {
           "style": {
@@ -82,7 +75,7 @@
       }
     },
     {
-      "includes": ["src/routes/**"],
+      "includes": ["apps/api/src/routes/**"],
       "linter": {
         "rules": {
           "style": {
@@ -102,11 +95,48 @@
       }
     },
     {
-      "includes": ["tests/**", "scripts/**"],
+      "includes": ["apps/web/src/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@repo/api", "@repo/api/*", "!@repo/api/types"],
+                    "message": "RULES.md WS-01/WS-05: the web app reaches the API over HTTP through @repo/api-client. Importing the API's runtime code would pull Hono, Drizzle and a database pool into the web process."
+                  },
+                  {
+                    "group": ["drizzle-orm", "drizzle-orm/**"],
+                    "message": "RULES.md WS-05: the web app has no database access. Add the query to the API and call it through @repo/api-client."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/api/tests/**", "scripts/**"],
       "linter": {
         "rules": {
           "suspicious": {
             "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/src/components/ui/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off"
+          },
+          "suspicious": {
+            "noExplicitAny": "off"
           }
         }
       }

@@ -1,19 +1,28 @@
-# bun + hono + postgres template
+# bun + hono + postgres + tanstack start monorepo template
 
-A small, opinionated starting point: [Bun](https://bun.com) runtime,
-[Hono](https://hono.dev) HTTP, [PostgreSQL](https://www.postgresql.org) via
-[Drizzle ORM](https://orm.drizzle.team) on Bun's native `bun:sql` driver, and
-[Zod 4](https://zod.dev) validation.
+A small, opinionated starting point for a two-service app in one repository:
 
-No `pg` or `postgres` package — Bun's built-in Postgres client does the work.
+| Workspace | What it is |
+| --- | --- |
+| **`apps/api`** | [Hono](https://hono.dev) on [Bun](https://bun.com), [PostgreSQL](https://www.postgresql.org) via [Drizzle ORM](https://orm.drizzle.team) on Bun's native `bun:sql`, [Zod 4](https://zod.dev) validation, OpenAPI generated from the same schemas |
+| **`apps/web`** | [TanStack Start](https://tanstack.com/start) SSR with [shadcn/ui](https://ui.shadcn.com) and Tailwind 4 |
+| **`packages/api-client`** | A typed client **inferred from the API's own routes** — no schema duplication, no codegen step |
+
+The interesting part is the seam: `apps/web` calls the API over HTTP through
+`hc<AppType>`, so renaming a field in a route makes the web app fail to compile.
+It holds no database credentials and never imports the API's runtime code.
+
+No `pg` or `postgres` package — Bun's built-in Postgres client does the work. And
+no Nitro: the web app builds with plain `vite build` and is served by a small Bun
+server, so the whole repo runs on one runtime.
 
 ## Starting a new app from this template
 
 Use Bun's own scaffolding CLI — one command, no extra tooling:
 
 ```bash
-bun create aspirin2ds/bun-hono-starter orders-api
-cd orders-api
+bun create aspirin2ds/bun-hono-starter orders-app
+cd orders-app
 ```
 
 `bun create` downloads the repo, installs dependencies, initialises a fresh git
@@ -29,29 +38,31 @@ keep it.
 <summary>Other ways to get a copy</summary>
 
 ```bash
-bunx degit aspirin2ds/bun-hono-starter orders-api   # no history, no hook
-git clone --depth 1 … && rm -rf .git        # manual
+bunx degit aspirin2ds/bun-hono-starter orders-app   # no history, no hook
+git clone --depth 1 … && rm -rf .git                # manual
 ```
 
 These skip the postinstall hook, so run the bootstrap yourself:
 
 ```bash
 git init && git add -A && git commit -m init
-bun run init orders-api
+bun run init orders-app
 ```
 </details>
 
 ### Starting from an empty schema
 
-`bun create` keeps the users example as a working reference. To strip it:
+`bun create` keeps the users example as a working reference — an API resource and
+the page that consumes it. To strip both:
 
 ```bash
-bun run init orders-api --bare
+bun run init orders-app --bare
 ```
 
-That removes the users routes, service, tests and migrations, leaving an empty
-schema and a starter integration test. Run `bun run db:generate` afterwards for
-your first migration.
+That removes the users routes, service, tests, migrations **and** the web page
+that reads them, leaving an empty schema, a starter integration test and a
+placeholder home route. Run `bun run db:generate` afterwards for your first
+migration.
 
 `bun run init` refuses to run on a dirty tree, so `git diff` always shows exactly
 what it changed.
@@ -59,16 +70,17 @@ what it changed.
 **It also rejects a database name that would trip [LAND-01](./RULES.md)** — naming
 your database after a directory that exists at `/` (`srv`, `tmp`, `app`, …) makes
 `bun:sql` read the connection URL's path as a Unix-socket directory and fail with
-a bare `FailedToOpenSocket`. The default derived name (`my_api_db`) is always safe.
+a bare `FailedToOpenSocket`. The default derived name (`orders_app_db`) is always safe.
 
 Then:
 
 ```bash
-cp .env.example .env
-bun install
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+bun install                    # one install covers every workspace
 ./scripts/fetch-docs.sh        # local copies of the upstream docs
 bun run db:generate            # --bare only: first migration from your schema
-docker compose up --build      # postgres -> migrate -> app
+docker compose up --build      # postgres -> migrate -> api -> web
 bun run check                  # lint, rule checks, typecheck, tests
 ```
 
@@ -78,12 +90,13 @@ enforces the mechanical parts, and the rest is what code review is for.
 ## Quick start
 
 ```bash
-cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
 bun install
 
 docker compose up -d postgres   # local database
 bun run db:migrate              # apply migrations
-bun run dev                     # http://localhost:3000
+bun run dev                     # api :3000 and web :3001, in parallel
 ```
 
 Or run the whole stack in containers:
@@ -92,9 +105,38 @@ Or run the whole stack in containers:
 docker compose up --build
 ```
 
-That builds the app image, waits for Postgres to pass its health check, runs
-migrations to completion in a one-shot `migrate` service, and only then starts
-the app.
+That builds both images, waits for Postgres to pass its health check, runs
+migrations to completion in a one-shot `migrate` service, starts the API, waits
+for it to report healthy, and only then starts the web app.
+
+| | |
+| --- | --- |
+| http://localhost:3001 | the web app |
+| http://localhost:3000/docs | interactive API reference |
+
+Each app owns its own `.env`. There is deliberately no root one — the web app
+having no `DATABASE_URL` should be visible at a glance.
+
+## How the two apps are joined
+
+```
+apps/web  ──HTTP──▶  apps/api  ──▶  postgres
+    │                    ▲
+    └── @repo/api-client ─┘  (types only, erased at runtime)
+```
+
+`apps/api/src/types.ts` is the only cross-workspace entry point, and it re-exports
+nothing but types. `packages/api-client` turns that into `hc<AppType>` plus
+`unwrap()`, which either returns the payload out of the `{ data }` envelope or
+throws an `ApiError` carrying the API's error `code` and `requestId`.
+
+The web app calls it from loaders and server functions only — `api.server.ts` is
+denied in the client bundle by Start's import protection, so `API_URL` (an internal
+hostname in compose) can never reach the browser. CI asserts that.
+
+This inference depends on the API chaining its `.openapi()` calls into one
+expression. Break the chain and `AppType` degrades to `unknown` — silently, with
+no error. That is why it is a rule, not a style preference.
 
 ## Endpoints
 
@@ -134,23 +176,33 @@ bound to the request id:
  "res":{"status":404},"durationMs":0.289,"msg":"GET /nope 404"}
 ```
 
-`bun run dev` pipes through the `pino-pretty` CLI for readable local output;
-`bun run dev:raw` gives the raw JSON. Deliberately **no pino transport** — that would run
-a worker thread for no benefit when the destination is stdout. Set verbosity with
-`LOG_LEVEL`; successful health checks are logged at `debug` so probes don't drown traffic.
+Both apps use the same configuration, the web app adding a `service: "web"` binding
+so one pipeline can parse both. `bun run dev` pipes through the `pino-pretty` CLI
+for readable local output. Deliberately **no pino transport** — that would run a
+worker thread for no benefit when the destination is stdout. Set verbosity with
+`LOG_LEVEL`; successful health checks are logged at `debug` so probes don't drown
+traffic.
 
-Use `c.get('logger')` inside a request and `logger` from `src/lib/logger.ts` elsewhere.
-Don't `console.log`.
+Use `c.get('logger')` inside a request and the exported `logger` elsewhere.
+Don't `console.log` — Biome fails the build on it.
 
 ## Scripts
 
+Everything runs from the repository root and fans out with `bun --filter`; there is
+no need to `cd` into a workspace, and no task orchestrator.
+
 ```bash
-bun run dev         bun run start      bun run typecheck
-bun run db:generate bun run db:migrate bun run db:push  bun run db:studio
+bun run dev          # api + web in parallel      bun run dev:api / dev:web
+bun run build        # vite build for the web app
+bun run typecheck    # all three workspaces
+bun run lint         # bun run lint:fix
+bun run check        # lint + rules + typecheck + tests — before committing
+
+bun run db:generate  bun run db:migrate     # no db:push / db:studio — see RULES.md BUN-05
 
 bun run test              # unit, then integration
-bun run test:unit         # src/ — service layer mocked, no database needed
-bun run test:integration  # tests/ — real Postgres; skips itself if none is up
+bun run test:unit         # API routes (service mocked) + api-client; no database
+bun run test:integration  # API services against real Postgres; skips if none is up
 ```
 
 The two suites run as **separate processes on purpose**: `mock.module` in the route
@@ -160,23 +212,32 @@ silently feed the integration tests the mock instead of real SQL.
 ## Layout
 
 ```
-src/
-  index.ts        Bun.serve + graceful shutdown
-  app.ts          Hono instance, middleware, onError/notFound
-  env.ts          Zod-validated env, fails fast at boot
-  routes/         HTTP layer (validate, delegate, serialize)
-  services/       business logic, no Hono types
-  db/             drizzle client, schema, migrator
-  lib/            AppError, validate() wrapper
-tests/
-  integration/    service layer against real Postgres
-  helpers/        test database setup + truncation
-drizzle/          generated migrations (commit these)
+apps/
+  api/                  Hono + Postgres. Owns the database.
+    src/
+      index.ts          Bun.serve + graceful shutdown
+      app.ts            Hono instance, middleware, onError/notFound
+      env.ts            Zod-validated env, fails fast at boot
+      types.ts          the only cross-workspace export — types only
+      routes/           HTTP layer (validate, delegate, serialize)
+      services/         business logic, no Hono types
+      db/               drizzle client, schema, migrator
+    tests/              integration tests + database helpers
+    drizzle/            generated migrations (commit these)
+  web/                  TanStack Start + shadcn/ui. No database access.
+    server.ts           production Bun server for the built output
+    src/
+      routes/           file-based routes
+      components/ui/    shadcn/ui components (copied in, yours to edit)
+      env.server.ts     server-only env
+      lib/api.server.ts the single connection to the API
+packages/
+  api-client/           hc<AppType> + unwrap()/ApiError
 ```
 
-Dependencies point one way — `routes → services → db`. Services never import
-`hono`, which is why the route tests can mock the service layer and run with no
-database at all.
+Dependencies point one way at every level: `routes → services → db` inside the API,
+and `web → api-client → api` across workspaces. Biome and `bun run check:rules`
+enforce both.
 
 ## API documentation
 
@@ -186,26 +247,38 @@ from the implementation. Browse them at `/docs`, or point a code generator at
 `/openapi.json`.
 
 Adding a route means adding a `createRoute({...})` block with its response codes, then
-`.openapi(route, handler)`. `src/routes/openapi.test.ts` asserts the document stays
-well-formed.
+`.openapi(route, handler)`. `apps/api/src/routes/openapi.test.ts` asserts the document
+stays well-formed, and CI runs `redocly lint` over it.
 
 ## Adding a table
 
-1. Add it to `src/db/schema.ts`
-2. `bun run db:generate` — writes SQL into `drizzle/`
+1. Add it to `apps/api/src/db/schema.ts`
+2. `bun run db:generate` — writes SQL into `apps/api/drizzle/`
 3. Review the SQL, commit it
 4. `bun run db:migrate`
 
-Avoid `db:push` on anything you care about; it skips the migration history.
+There is no `db:push` or `db:studio` script. Both need a Node Postgres driver (`pg` or
+`postgres`), and this template deliberately has neither — Bun's built-in client does the
+work at runtime. Adding `pg` as a devDependency is the only way to get Drizzle Studio here.
+
+## Adding a UI component
+
+```bash
+bunx shadcn@latest add card -c apps/web
+```
+
+Components are copied into `apps/web/src/components/ui/`, so they are first-party
+code you can edit — not a dependency to work around.
 
 ## Conventions
 
 [RULES.md](./RULES.md) is the canonical rule set for this stack — numbered so review
 comments can cite an id, and marked by whether a tool enforces each rule or only a human
-will catch it. It ends with a review checklist.
+will catch it. It ends with a review checklist. `WS-*` covers the workspace boundaries,
+`BUN-*` covers using Bun's APIs rather than Node's.
 
 [CLAUDE.md](./CLAUDE.md) is the operational subset for AI agents, plus the `llms.txt`
-endpoints for every dependency here.
+endpoints for every dependency here — and the ones that publish none.
 
 ## License
 
