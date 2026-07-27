@@ -111,18 +111,25 @@ check(async () => {
 
 /** DB-02 — applied migrations are immutable. */
 check(async () => {
-  const proc = Bun.spawnSync(['git', 'diff', '--name-only', 'HEAD', '--', 'drizzle'])
-  const changed = proc.stdout
+  // `--diff-filter=M` is deliberate: the rule is about *editing* a committed
+  // migration. Adding one is the normal workflow, and wholesale removal is what
+  // `scripts/init.ts --bare` does when resetting the template — neither is the
+  // hazard DB-02 guards against.
+  const proc = Bun.spawnSync([
+    'git',
+    'diff',
+    '--name-only',
+    '--diff-filter=M',
+    'HEAD',
+    '--',
+    'drizzle',
+  ])
+
+  const failures = proc.stdout
     .toString()
     .split('\n')
     .filter((l) => l.endsWith('.sql'))
-
-  // A brand-new migration is fine; editing one that is already committed is not.
-  const failures: string[] = []
-  for (const f of changed) {
-    const tracked = Bun.spawnSync(['git', 'ls-files', '--error-unmatch', f]).exitCode === 0
-    if (tracked) failures.push(`${f} was modified; generate a new migration instead`)
-  }
+    .map((f) => `${f} was edited; generate a new migration instead`)
 
   return { rule: 'DB-02', what: 'committed migrations are never edited', failures }
 })
