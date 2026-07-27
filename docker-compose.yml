@@ -9,7 +9,14 @@ services:
     ports:
       - '${POSTGRES_PORT:-5432}:5432'
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # Postgres 18+ wants ONE mount at /var/lib/postgresql, not the older
+      # /var/lib/postgresql/data. It stores data in a version-specific
+      # subdirectory so `pg_upgrade --link` can work across a single mount
+      # point. Mounting .../data makes 18 refuse to start:
+      #   "there appears to be PostgreSQL data in /var/lib/postgresql/data
+      #    (unused mount/volume)"
+      # https://github.com/docker-library/postgres/pull/1259
+      - postgres-data:/var/lib/postgresql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-appdb}']
       interval: 5s
