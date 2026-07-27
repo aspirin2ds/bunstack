@@ -5,6 +5,13 @@ import { type User, users } from '../db/schema.ts'
 import { AppError } from '../lib/errors.ts'
 
 /**
+ * Re-exported so routes can type responses without importing from `db/`
+ * (RULES.md ARCH-01). Today it is the row type; if this layer ever returns a
+ * DTO instead, callers keep working.
+ */
+export type { User }
+
+/**
  * Business logic for users. Deliberately free of Hono types: everything here
  * takes plain input and throws `AppError`, so it is callable and testable
  * without an HTTP context.

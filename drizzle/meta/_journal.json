@@ -8,6 +8,13 @@
       "when": 1785132700187,
       "tag": "0000_cool_kree",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785150924174,
+      "tag": "0001_lucky_rhodey",
+      "breakpoints": true
     }
   ]
 }

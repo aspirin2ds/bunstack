@@ -1,7 +1,9 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 
-import type { User } from '../db/schema.ts'
 import { dataResponse, errorResponse } from '../lib/openapi.ts'
+// RULES.md ARCH-01: the type comes from the service, not `db/`. Routes depend
+// on what the service returns, so a future DTO changes nothing here.
+import type { User } from '../services/users.ts'
 import * as usersService from '../services/users.ts'
 
 const EXAMPLE_ID = '3f6d1b8e-1a2b-4c3d-8e9f-0a1b2c3d4e5f'
@@ -40,7 +42,9 @@ const ListQuery = z.object({
 
 const CreateUserBody = z
   .object({
-    email: z.email().openapi({ example: 'ada@example.com' }),
+    // RULES.md VAL-04: 254 is the RFC 5321 maximum. Without a bound the body
+    // limit is the only thing standing between you and a megabyte "email".
+    email: z.email().max(254).openapi({ example: 'ada@example.com' }),
     name: z.string().trim().min(1).max(200).openapi({ example: 'Ada Lovelace' }),
   })
   .openapi('CreateUser')

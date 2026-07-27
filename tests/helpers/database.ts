@@ -33,6 +33,8 @@ export async function isPostgresReachable(): Promise<boolean> {
   } catch {
     return false
   } finally {
+    // RULES.md ERR-05: a failure closing a throwaway admin connection tells us
+    // nothing and must not mask the real result of the function.
     await admin.close({ timeout: 1 }).catch(() => {})
   }
 }
@@ -54,6 +56,8 @@ export async function setupTestDatabase(): Promise<void> {
       await admin.unsafe(`create database "${database.replace(/"/g, '""')}"`)
     }
   } finally {
+    // RULES.md ERR-05: a failure closing a throwaway admin connection tells us
+    // nothing and must not mask the real result of the function.
     await admin.close({ timeout: 1 }).catch(() => {})
   }
 

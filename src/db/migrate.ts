@@ -6,10 +6,13 @@
  */
 import { migrate } from 'drizzle-orm/bun-sql/migrator'
 
+import { logger } from '../lib/logger.ts'
 import { db } from './index.ts'
 
 await migrate(db, { migrationsFolder: './drizzle' })
 
-console.log('migrations up to date')
+// RULES.md LOG-01: structured even here — this runs as its own container in
+// compose, so its output lands in the same log stream as the app's.
+logger.info('migrations up to date')
 
 process.exit(0)

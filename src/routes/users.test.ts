@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
-import type { User } from '../db/schema.ts'
 import { AppError } from '../lib/errors.ts'
+import type { User } from '../services/users.ts'
 
 /**
  * The service layer is mocked, so these tests exercise routing, validation and
@@ -101,6 +101,17 @@ describe('POST /api/users', () => {
 
     const body = (await res.json()) as { error: { details: { path: string }[] } }
     expect(body.error.details[0]?.path).toBe('email')
+  })
+
+  it('rejects an over-long email (RULES.md VAL-04)', async () => {
+    const res = await app.request('/api/users', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: `${'a'.repeat(250)}@example.com`, name: 'Ada' }),
+    })
+
+    expect(res.status).toBe(400)
+    expect(createUser).not.toHaveBeenCalled()
   })
 
   it('maps a service conflict to 409', async () => {

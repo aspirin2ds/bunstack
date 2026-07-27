@@ -167,10 +167,13 @@ context. An empty catch needs a comment explaining why the failure is genuinely 
 
 ## LOG — Logging
 
-**LOG-01** 👁 Never `console.log`. Use `c.get('logger')` inside a request, `logger` from
-`src/lib/logger.ts` elsewhere.
+**LOG-01** 👁 Never `console.*` **in `src/`** — including one-off scripts like
+`src/db/migrate.ts`, whose output lands in the same log stream as the app's. Use
+`c.get('logger')` inside a request, `logger` from `src/lib/logger.ts` elsewhere.
 *Why:* console output is unstructured and drops the `requestId`, so it cannot be
 correlated or queried.
+*Scope:* test harness notices under `tests/` may use `console` — that output is for a
+human watching a test run, not for a log aggregator.
 
 **LOG-02** 👁 Do not add a pino `transport`. It spawns a worker thread for no benefit when
 the destination is stdout, and worker threads are the historical friction point for pino
