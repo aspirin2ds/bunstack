@@ -12,7 +12,7 @@ No `pg` or `postgres` package — Bun's built-in Postgres client does the work.
 Use Bun's own scaffolding CLI — one command, no extra tooling:
 
 ```bash
-bun create <owner>/<this-repo> orders-api
+bun create aspirin2ds/bun-hono-starter orders-api
 cd orders-api
 ```
 
@@ -29,7 +29,7 @@ keep it.
 <summary>Other ways to get a copy</summary>
 
 ```bash
-bunx degit <owner>/<this-repo> orders-api   # no history, no hook
+bunx degit aspirin2ds/bun-hono-starter orders-api   # no history, no hook
 git clone --depth 1 … && rm -rf .git        # manual
 ```
 
@@ -206,3 +206,7 @@ will catch it. It ends with a review checklist.
 
 [CLAUDE.md](./CLAUDE.md) is the operational subset for AI agents, plus the `llms.txt`
 endpoints for every dependency here.
+
+## License
+
+MIT — see [LICENSE](./LICENSE).
