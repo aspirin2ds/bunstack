@@ -130,7 +130,11 @@ well-formed.
 
 Avoid `db:push` on anything you care about; it skips the migration history.
 
-## Notes for AI agents
+## Conventions
 
-See [CLAUDE.md](./CLAUDE.md) for the `llms.txt` endpoints of every dependency
-here, plus the project conventions.
+[RULES.md](./RULES.md) is the canonical rule set for this stack — numbered so review
+comments can cite an id, and marked by whether a tool enforces each rule or only a human
+will catch it. It ends with a review checklist.
+
+[CLAUDE.md](./CLAUDE.md) is the operational subset for AI agents, plus the `llms.txt`
+endpoints for every dependency here.

@@ -25,7 +25,8 @@
       },
       "style": {
         "useConst": "error",
-        "noNonNullAssertion": "off"
+        "noNonNullAssertion": "off",
+        "noProcessEnv": "error"
       },
       "suspicious": {
         "noExplicitAny": "error"
@@ -47,5 +48,17 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/env.ts", "drizzle.config.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noProcessEnv": "off"
+          }
+        }
+      }
+    }
+  ]
 }

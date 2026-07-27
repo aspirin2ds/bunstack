@@ -2,6 +2,11 @@
 
 Bun + Hono + PostgreSQL (Drizzle ORM) application template.
 
+> **[RULES.md](./RULES.md) is the canonical rule set** — numbered, citable in review, and
+> marked by whether a tool enforces each one. This file is the day-to-day operational
+> subset. If the two ever disagree, RULES.md wins and this file is the one to fix.
+> Read RULES.md before a non-trivial change, and cite ids (`DB-04`, `LOG-02`) in review.
+
 ## Documentation for AI agents
 
 Every dependency in this stack publishes machine-readable docs. **Read these before
