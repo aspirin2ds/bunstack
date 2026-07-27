@@ -58,8 +58,25 @@ function fail(message: string): never {
 
 const argv = Bun.argv.slice(2)
 const bare = argv.includes('--bare')
-const dbFlag = argv.indexOf('--db')
-const appName = argv.find((a) => !a.startsWith('--') && argv[dbFlag + 1] !== a)
+
+// Parse positionally: `--db` consumes the next token, so a value that happens
+// to equal the app name cannot swallow it.
+const positional: string[] = []
+let dbFromFlag: string | undefined
+
+for (let i = 0; i < argv.length; i++) {
+  const arg = argv[i] as string
+
+  if (arg === '--db') {
+    dbFromFlag = argv[++i]
+    continue
+  }
+  if (arg.startsWith('--')) continue
+
+  positional.push(arg)
+}
+
+const appName = positional[0]
 
 if (!appName) {
   fail('usage: bun scripts/init.ts <app-name> [--db <database>] [--bare]')
@@ -69,7 +86,7 @@ if (!/^[a-z][a-z0-9-]*$/.test(appName)) {
   fail(`app name must be lower-case letters, digits and dashes: got "${appName}"`)
 }
 
-const dbName = dbFlag !== -1 ? argv[dbFlag + 1] : `${appName.replace(/-/g, '_')}_db`
+const dbName = dbFromFlag ?? `${appName.replace(/-/g, '_')}_db`
 
 if (!dbName || !/^[a-z_][a-z0-9_]*$/.test(dbName)) {
   fail(`database name must be lower-case letters, digits and underscores: got "${dbName}"`)
