@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 
 import { closeDatabase } from '../../src/db/index.ts'
-import { isPostgresReachable, setupTestDatabase, truncateAll } from '../helpers/database.ts'
 import { AppError } from '../../src/lib/errors.ts'
 import * as users from '../../src/services/users.ts'
+import { isPostgresReachable, setupTestDatabase, truncateAll } from '../helpers/database.ts'
 
 /**
  * Exercises the service layer against a real PostgreSQL instance. The route
@@ -127,9 +127,7 @@ describe.skipIf(!reachable)('users service (integration)', () => {
       const first = await users.createUser(input)
       await users.createUser({ email: 'grace@example.com', name: 'Grace' })
 
-      const error = await users
-        .updateUser(first.id, { email: 'grace@example.com' })
-        .catch((e) => e)
+      const error = await users.updateUser(first.id, { email: 'grace@example.com' }).catch((e) => e)
 
       expect((error as AppError).code).toBe('conflict')
     })

@@ -1,9 +1,8 @@
 import { SQL } from 'bun'
 import { sql } from 'drizzle-orm'
 import { migrate } from 'drizzle-orm/bun-sql/migrator'
-
-import { env } from '../../src/env.ts'
 import { db } from '../../src/db/index.ts'
+import { env } from '../../src/env.ts'
 
 /**
  * Helpers for integration tests that run against a real PostgreSQL instance.

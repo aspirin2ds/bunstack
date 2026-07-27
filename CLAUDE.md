@@ -96,7 +96,8 @@ know what you need — Drizzle's full file alone is ~340k tokens.
 | HTTP | Hono 4 | Web-standard `Request`/`Response`, tiny, first-class Bun support |
 | Database | PostgreSQL 18 | — |
 | ORM | Drizzle over `drizzle-orm/bun-sql` | Typed schema, SQL-shaped queries, no extra pg client |
-| Validation | Zod 4 + `@hono/zod-validator` | One schema drives both runtime validation and types |
+| Validation + docs | Zod 4 via `@hono/zod-openapi` | One schema validates, types, **and** documents each route |
+| Lint/format | Biome 2 | Single fast tool; config matches the existing style |
 
 The `bun-sql` driver uses Bun's **built-in** Postgres client, so there is deliberately no
 `pg` or `postgres` dependency. Do not add one.
@@ -112,6 +113,10 @@ bun run typecheck     # tsc --noEmit
 bun run test              # unit, then integration
 bun run test:unit         # src/ — service layer mocked, no database needed
 bun run test:integration  # tests/ — real Postgres; skips itself if none is up
+
+bun run lint          # biome check (lint + format, read-only)
+bun run lint:fix      # biome check --write
+bun run check         # lint + typecheck + all tests — run this before committing
 
 bun run db:generate   # schema.ts -> SQL migration in drizzle/
 bun run db:migrate    # apply pending migrations
@@ -168,9 +173,18 @@ a service and was invisible to the mocked route tests.
   from `hono`, and routes must not import from `db/`. This keeps services testable
   without an HTTP context.
 - **Chain routes for RPC type inference.** Hono's `hc` client only infers types from
-  chained `.get().post()` calls, not from separately-declared handlers. See
+  chained `.openapi()` calls, not from separately-declared handlers. See
   [best practices](https://hono.dev/docs/guides/best-practices).
-- **Validate at the edge** with `zValidator`; services take already-typed input.
+- **Declare routes with `createRoute()`**, not `app.get(...)` — the same Zod schema then
+  validates the request and documents it. A plain `app.get` still works but is invisible
+  to `/openapi.json`, so the docs quietly go stale.
+- **Validation errors flow through `defaultHook`** in `src/app.ts`, which throws
+  `AppError`. Don't add per-route error handling; it would fork the error envelope.
+- **Responses are serialized explicitly** (`toResponse` in `src/routes/users.ts`): the
+  service layer deals in `Date`, the wire format is ISO strings, and the response schema
+  type-checks that the conversion happened.
+- **Avoid `z.unknown()` in response schemas** — it emits `nullable` with no `type`, which
+  is invalid OpenAPI 3.0. Give the field a real shape.
 - **Throw `AppError`**, don't return error responses ad hoc — `app.onError` renders the
   single JSON error shape.
 - **Schema changes go through migrations.** Edit `src/db/schema.ts`, then

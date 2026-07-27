@@ -19,7 +19,11 @@ const EnvSchema = z.object({
   DB_MAX_LIFETIME: z.coerce.number().int().nonnegative().default(0),
 
   // Largest accepted request body, in bytes.
-  BODY_LIMIT_BYTES: z.coerce.number().int().positive().default(1024 * 1024),
+  BODY_LIMIT_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(1024 * 1024),
   // Request deadline; exceeding it returns 504.
   REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 

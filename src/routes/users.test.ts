@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
-
-import { AppError } from '../lib/errors.ts'
 import type { User } from '../db/schema.ts'
+import { AppError } from '../lib/errors.ts'
 
 /**
  * The service layer is mocked, so these tests exercise routing, validation and
@@ -181,9 +180,7 @@ describe('security middleware', () => {
     })
 
     expect(res.status).toBe(413)
-    expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
-      'payload_too_large',
-    )
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe('payload_too_large')
     expect(createUser).not.toHaveBeenCalled()
   })
 })

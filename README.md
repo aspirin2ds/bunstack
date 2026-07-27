@@ -32,6 +32,8 @@ the app.
 
 | Method | Path | |
 | --- | --- | --- |
+| `GET` | `/docs` | interactive API reference |
+| `GET` | `/openapi.json` | OpenAPI 3.0 spec, generated from the route schemas |
 | `GET` | `/health` | process liveness, no database touched |
 | `GET` | `/health/db` | 200 if the database is reachable, else 503 |
 | `GET` | `/api/users` | `?limit=1..100&offset=0` |
@@ -88,6 +90,17 @@ drizzle/          generated migrations (commit these)
 Dependencies point one way — `routes → services → db`. Services never import
 `hono`, which is why the route tests can mock the service layer and run with no
 database at all.
+
+## API documentation
+
+Routes are declared with `createRoute()` from `@hono/zod-openapi`, so the same Zod
+schema validates the request **and** describes it in the spec — the docs cannot drift
+from the implementation. Browse them at `/docs`, or point a code generator at
+`/openapi.json`.
+
+Adding a route means adding a `createRoute({...})` block with its response codes, then
+`.openapi(route, handler)`. `src/routes/openapi.test.ts` asserts the document stays
+well-formed.
 
 ## Adding a table
 

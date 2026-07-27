@@ -1,15 +1,16 @@
-import { Hono } from 'hono'
+import { OpenAPIHono } from '@hono/zod-openapi'
+import { Scalar } from '@scalar/hono-api-reference'
 import { bodyLimit } from 'hono/body-limit'
 import { cors } from 'hono/cors'
 import { HTTPException } from 'hono/http-exception'
 import { logger } from 'hono/logger'
-import { requestId, type RequestIdVariables } from 'hono/request-id'
+import { type RequestIdVariables, requestId } from 'hono/request-id'
 import { secureHeaders } from 'hono/secure-headers'
 import { timeout } from 'hono/timeout'
 
 import { checkDatabase } from './db/index.ts'
 import { env, isProduction } from './env.ts'
-import { AppError, toErrorBody, type ErrorCode } from './lib/errors.ts'
+import { AppError, type ErrorCode, toErrorBody } from './lib/errors.ts'
 import { usersRoutes } from './routes/users.ts'
 
 type AppEnv = { Variables: RequestIdVariables }
@@ -24,7 +25,24 @@ const CODE_BY_STATUS: Record<number, ErrorCode> = {
   504: 'timeout',
 }
 
-export const app = new Hono<AppEnv>()
+export const app = new OpenAPIHono<AppEnv>({
+  /**
+   * Validation failures from `createRoute` schemas land here. Without this hook
+   * the middleware emits its own body and the API would have two different
+   * error shapes.
+   */
+  defaultHook: (result) => {
+    if (!result.success) {
+      throw AppError.badRequest(
+        `Invalid request ${result.target}`,
+        result.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      )
+    }
+  },
+})
 
 app.use('*', requestId())
 app.use('*', logger())
@@ -64,6 +82,23 @@ export const routes = app.route('/api/users', usersRoutes)
 
 /** Type for Hono's `hc` RPC client: `hc<AppType>('/')`. */
 export type AppType = typeof routes
+
+/**
+ * The spec is generated from the same Zod schemas the routes validate with, so
+ * it cannot drift from the implementation. `/docs` renders it.
+ */
+app.doc('/openapi.json', {
+  openapi: '3.0.0',
+  info: {
+    title: 'bun-hono-postgres-template',
+    version: '0.1.0',
+    description: 'Example API. Every error uses the shared `Error` envelope.',
+  },
+  servers: [{ url: `http://localhost:${env.PORT}`, description: 'Local' }],
+  tags: [{ name: 'Users', description: 'CRUD over the example users resource' }],
+})
+
+app.get('/docs', Scalar({ url: '/openapi.json', pageTitle: 'API reference' }))
 
 app.notFound((c) =>
   c.json(

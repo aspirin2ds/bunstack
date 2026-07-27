@@ -9,12 +9,15 @@ import { isUniqueViolation } from './index.ts'
  * the driver error in a `DrizzleQueryError` under `cause`.
  */
 function bunPostgresError() {
-  return Object.assign(new Error('duplicate key value violates unique constraint "users_email_key"'), {
-    name: 'PostgresError',
-    code: 'ERR_POSTGRES_SERVER_ERROR',
-    errno: '23505',
-    constraint: 'users_email_key',
-  })
+  return Object.assign(
+    new Error('duplicate key value violates unique constraint "users_email_key"'),
+    {
+      name: 'PostgresError',
+      code: 'ERR_POSTGRES_SERVER_ERROR',
+      errno: '23505',
+      constraint: 'users_email_key',
+    },
+  )
 }
 
 describe('isUniqueViolation', () => {

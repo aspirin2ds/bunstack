@@ -1,7 +1,7 @@
 import { asc, eq } from 'drizzle-orm'
 
 import { db, isUniqueViolation } from '../db/index.ts'
-import { users, type User } from '../db/schema.ts'
+import { type User, users } from '../db/schema.ts'
 import { AppError } from '../lib/errors.ts'
 
 /**

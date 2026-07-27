@@ -45,6 +45,9 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
+      - name: Lint and format check
+        run: bun run lint
+
       - name: Typecheck
         run: bun run typecheck
 
@@ -100,6 +103,14 @@ jobs:
           set -euo pipefail
           curl -fsS http://localhost:3000/health
           curl -fsS http://localhost:3000/health/db
+
+          # The spec and its UI must actually be served by the release image.
+          curl -fsS http://localhost:3000/openapi.json | bun -e '
+            const d = JSON.parse(await Bun.stdin.text())
+            if (!d.openapi || !d.paths?.["/api/users"]) throw new Error("bad OpenAPI document")
+            console.log("openapi ok:", Object.keys(d.paths).length, "paths")
+          '
+          curl -fsS http://localhost:3000/docs -o /dev/null
 
           id=$(curl -fsS -X POST http://localhost:3000/api/users \
                  -H 'content-type: application/json' \
