@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.local
+
+# Local cache of upstream docs (~6MB, regenerate with ./scripts/fetch-docs.sh)
+.online-docs/
+*.log
+coverage/
+.DS_Store
+.idea/
+.vscode/
