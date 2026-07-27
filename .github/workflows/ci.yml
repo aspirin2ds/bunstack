@@ -48,6 +48,11 @@ jobs:
       - name: Lint and format check
         run: bun run lint
 
+      # RULES.md checks that Biome cannot express (layering, env docs, unused
+      # deps, route declaration style, migration immutability).
+      - name: Rule checks
+        run: bun run check:rules
+
       - name: Typecheck
         run: bun run typecheck
 
@@ -68,6 +73,16 @@ jobs:
             echo "::error::Integration tests skipped - Postgres was unreachable"
             exit 1
           fi
+
+      # RULES.md VAL-03: catches schema mistakes that are invalid OpenAPI, such
+      # as z.unknown() emitting `nullable` with no `type`.
+      - name: Validate the OpenAPI document
+        run: |
+          bun -e 'const {app}=await import("./src/app.ts");
+                  const r=await app.request("/openapi.json");
+                  await Bun.write("openapi.json", await r.text())'
+          bunx --yes @redocly/cli@latest lint openapi.json --extends=minimal
+          rm -f openapi.json
 
       - name: Check migrations match schema
         run: |

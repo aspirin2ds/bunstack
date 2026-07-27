@@ -11,9 +11,14 @@ source of truth**; if the two disagree, this one wins and `CLAUDE.md` should be 
 
 | Mark | Meaning |
 | --- | --- |
-| 🤖 | A tool fails on it — Biome, `tsc`, or CI. You will not merge a violation by accident. |
+| 🤖 | A tool fails on it — Biome, `tsc`, `bun run check:rules`, or CI. You will not merge a violation by accident. |
+| 🤖/👁 | Partly automated; the rest is on review. The note says which part. |
 | 👁 | Nobody checks it but a human. These are the ones worth reviewing for. |
 | 🔭 | Not implemented in this template yet; the rule applies when you add the feature. |
+
+Every 🤖 rule here has been **mutation-tested** — a violation was introduced and the tool
+confirmed to fail on it. A check that cannot fail is worse than no check, because it makes
+a rule look enforced when it is not.
 
 Rules are **defaults, not laws**. Breaking one is fine when the reason is better than the
 rule — say so in a comment at the site, and cite the id. Silent violations are the problem.
@@ -22,18 +27,21 @@ rule — say so in a comment at the site, and cite the id. Silent violations are
 
 ## ARCH — Layering
 
-**ARCH-01** 👁 Dependencies point one way: `routes → services → db`. A service must never
+**ARCH-01** 🤖 Dependencies point one way: `routes → services → db`. A service must never
 import from `hono`, and a route must never import from `src/db/`.
 *Why:* it is what lets the service layer be tested against a real database with no HTTP
 context, and routes be tested with no database. Break it and both test suites lose meaning.
+*Enforced by* Biome `noRestrictedImports`, per-directory.
 
 **ARCH-02** 👁 Business logic lives in a service, not a route handler. A handler should
 parse, delegate, and serialize — nothing else.
 *Why:* logic in handlers is only reachable through HTTP, so it tends to get tested through
 mocks that assert nothing about the logic.
 
-**ARCH-03** 👁 Services take and return plain data, and throw `AppError`. No `Context`, no
-`Response`, no status codes.
+**ARCH-03** 🤖/👁 Services take and return plain data, and throw `AppError`. No `Context`,
+no `Response`, no status codes.
+*The import ban makes the HTTP types unreachable; "returns plain data and throws
+`AppError`" is still on review.*
 
 **ARCH-04** 👁 Serialize at the route boundary. The database deals in `Date`; the wire
 format is ISO strings. `toResponse()` in `src/routes/users.ts` is the pattern, and the
@@ -46,10 +54,11 @@ not `app.ts`, so middleware can type its context without an import cycle.
 
 ## API — Routes and HTTP
 
-**API-01** 👁 Declare routes with `createRoute()` + `.openapi()`, not `app.get()`.
+**API-01** 🤖 Declare routes with `createRoute()` + `.openapi()`, not `app.get()`.
 *Why:* a plain `app.get` still serves traffic but is invisible to `/openapi.json`, so the
 published contract silently goes stale. Health and docs endpoints are the deliberate
 exceptions — they are infrastructure, not API surface.
+*Enforced by* `bun run check:rules`.
 
 **API-02** 👁 Chain route registrations in one expression. Hono's `hc` RPC client infers
 types only from a chained builder, not from separately-declared handlers.
@@ -85,9 +94,10 @@ input because the boundary already checked it.
 **VAL-02** 👁 Validation failures flow through `defaultHook` in `src/app.ts`. Do not add
 per-route validation error handling — it forks the error envelope.
 
-**VAL-03** 👁 Never use `z.unknown()` or `z.any()` in a **response** schema. It emits
+**VAL-03** 🤖 Never use `z.unknown()` or `z.any()` in a **response** schema. It emits
 `nullable` with no `type`, which is invalid OpenAPI 3.0 (caught by `redocly lint`). Give
 the field a real shape.
+*Enforced by* `redocly lint` in CI.
 
 **VAL-04** 👁 Bound every user-supplied collection and string: `limit` has a max, strings
 have `.max()`. Unbounded pagination is a denial-of-service vector against your own
@@ -107,8 +117,9 @@ the deprecated Zod 3 `z.string().email()` chain style.
 `bun run db:generate`, review the SQL, and commit the migration. CI fails if schema and
 migrations disagree.
 
-**DB-02** 👁 Never hand-edit a file in `drizzle/`. Generate a new migration instead —
+**DB-02** 🤖 Never hand-edit a file in `drizzle/`. Generate a new migration instead —
 editing one that has already been applied desynchronises every environment.
+*Enforced by* `bun run check:rules`.
 
 **DB-03** 👁 `db:push` is a local prototyping tool. Never run it against an environment you
 care about; it skips migration history.
@@ -167,13 +178,14 @@ context. An empty catch needs a comment explaining why the failure is genuinely 
 
 ## LOG — Logging
 
-**LOG-01** 👁 Never `console.*` **in `src/`** — including one-off scripts like
+**LOG-01** 🤖 Never `console.*` **in `src/`** — including one-off scripts like
 `src/db/migrate.ts`, whose output lands in the same log stream as the app's. Use
 `c.get('logger')` inside a request, `logger` from `src/lib/logger.ts` elsewhere.
 *Why:* console output is unstructured and drops the `requestId`, so it cannot be
 correlated or queried.
 *Scope:* test harness notices under `tests/` may use `console` — that output is for a
 human watching a test run, not for a log aggregator.
+*Enforced by* Biome `noConsole` (off under `tests/`).
 
 **LOG-02** 👁 Do not add a pino `transport`. It spawns a worker thread for no benefit when
 the destination is stdout, and worker threads are the historical friction point for pino
@@ -202,9 +214,10 @@ request that happens to need the variable.
 *Enforced by* Biome's `style/noProcessEnv`, with exemptions in `biome.json` for `env.ts`
 itself and `drizzle.config.ts` (which runs under drizzle-kit, outside the app's boot path).
 
-**CFG-02** 👁 New config gets a Zod type, a sane default where one exists, and an entry in
+**CFG-02** 🤖 New config gets a Zod type, a sane default where one exists, and an entry in
 `.env.example`. Required-with-no-default is correct for anything that has no safe default
 (`DATABASE_URL`).
+*Enforced by* `bun run check:rules`.
 
 **CFG-03** 👁 Never commit `.env`. It is git-ignored; keep it that way. `.env.example`
 carries the shape, never real values.
@@ -326,8 +339,9 @@ broken.
 **DEP-02** 👁 Prefer Bun and Hono built-ins over new dependencies. Every dependency is
 supply chain, install time, and a Bun-compatibility question.
 
-**DEP-03** 👁 Remove a dependency the moment it stops being used, and delete the code it
+**DEP-03** 🤖 Remove a dependency the moment it stops being used, and delete the code it
 supported. `@hono/zod-validator` and `src/lib/validate.ts` went together.
+*Enforced by* `bun run check:rules`.
 
 **DEP-04** 👁 `bun.lock` is committed, and CI installs with `--frozen-lockfile`.
 
@@ -396,3 +410,15 @@ For a routine change, in priority order:
 
 Everything marked 🤖 is already guaranteed by `bun run check` and CI. **Spend review
 attention on the 👁 rules** — they are the ones no tool will catch.
+
+### Adding enforcement
+
+When a 👁 rule turns out to be mechanically checkable, automate it and promote the mark:
+
+- **Import and syntax shapes** → a Biome rule in `biome.json`, scoped with `overrides`.
+- **Anything needing project knowledge** (file layout, cross-file consistency) → a check in
+  `scripts/check-rules.ts`, named after the rule id.
+- **The OpenAPI contract** → `redocly lint` already runs in CI.
+
+Then break the rule on purpose and confirm the tool fails. If it does not, the rule is
+still 👁 — say so rather than claiming otherwise.
