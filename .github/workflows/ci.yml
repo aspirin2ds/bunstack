@@ -113,6 +113,9 @@ jobs:
       - name: Start the stack
         run: docker compose up --build -d --wait --wait-timeout 180
 
+      # Uses jq, not bun: this job deliberately has no Bun toolchain, because it
+      # tests the built image the way a deployment would. jq is preinstalled on
+      # GitHub-hosted runners.
       - name: Smoke test
         run: |
           set -euo pipefail
@@ -120,17 +123,14 @@ jobs:
           curl -fsS http://localhost:3000/health/db
 
           # The spec and its UI must actually be served by the release image.
-          curl -fsS http://localhost:3000/openapi.json | bun -e '
-            const d = JSON.parse(await Bun.stdin.text())
-            if (!d.openapi || !d.paths?.["/api/users"]) throw new Error("bad OpenAPI document")
-            console.log("openapi ok:", Object.keys(d.paths).length, "paths")
-          '
+          curl -fsS http://localhost:3000/openapi.json \
+            | jq -e '.openapi and (.paths | has("/api/users"))' >/dev/null
           curl -fsS http://localhost:3000/docs -o /dev/null
 
           id=$(curl -fsS -X POST http://localhost:3000/api/users \
                  -H 'content-type: application/json' \
                  -d '{"email":"ci@example.com","name":"CI"}' \
-               | bun -e 'console.log(JSON.parse(await Bun.stdin.text()).data.id)')
+               | jq -re '.data.id')
 
           curl -fsS "http://localhost:3000/api/users/$id" >/dev/null
 
