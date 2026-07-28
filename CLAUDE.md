@@ -133,6 +133,17 @@ Like `bun.com`, **every `ui.shadcn.com` docs page has a `.md` twin**.
 Components are **copied into the repo**, not imported from a dependency: `shadcn add` writes
 source files you then own and edit. Treat them as first-party code.
 
+**The `shadcn` package itself is not installed** — run it as `bunx --bun shadcn@latest add
+<component> -c apps/web`. It was a devDependency accounting for 221 of the lockfile's 637
+packages (MCP SDK, Babel, ts-morph, dotenvx, Zod 3) whose only build input was one
+`@import`; those `@custom-variant` blocks now live directly in `apps/web/src/styles.css`.
+
+After adding a component, `bun run check` enforces **DEP-07**: a `data-*` variant the
+component uses must be defined in `styles.css`. This is not pedantry — Tailwind 4 has a
+built-in `data-*` variant, so an undefined `data-open:` compiles to `[data-open]`, Radix
+sets `data-state="open"`, and the rule matches nothing. The animation silently never plays
+and nothing errors. Copy the missing block from `shadcn/tailwind.css`.
+
 ### Vite — `llms.txt`
 
 Start builds with Vite. **This template does not use Nitro**; see

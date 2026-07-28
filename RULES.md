@@ -487,6 +487,18 @@ it. Node compatibility is not Bun compatibility — pino's worker-thread transpo
 checked on both macOS and Linux/arm64 before being ruled out for reasons other than
 breakage.
 
+**DEP-07** 🤖 A component may only use a `data-*` Tailwind variant that
+`apps/web/src/styles.css` defines. The `shadcn` package is **not** a dependency — its nine
+`@custom-variant` blocks are copied into `styles.css`, which is what lets a CLI with 34
+transitive dependencies (the MCP SDK, Babel, ts-morph, dotenvx, Zod 3 — 221 of 637
+lockfile packages) stay out of the install. Run it on demand with
+`bunx --bun shadcn@latest add <component>`, then check what the new component uses.
+*Enforced by* `bun run check:rules`.
+*Why it needs a check:* Tailwind 4 has a built-in `data-*` variant, so an undefined
+`data-open:` still compiles — to `[data-open]`. Radix sets `data-state="open"`, so the rule
+matches nothing and the animation silently never plays. Nothing errors; the stylesheet is
+just wrong.
+
 ---
 
 ## PERF — Performance

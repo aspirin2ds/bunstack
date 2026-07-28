@@ -265,11 +265,24 @@ work at runtime. Adding `pg` as a devDependency is the only way to get Drizzle S
 ## Adding a UI component
 
 ```bash
-bunx shadcn@latest add card -c apps/web
+bunx --bun shadcn@latest add card -c apps/web
 ```
 
 Components are copied into `apps/web/src/components/ui/`, so they are first-party
 code you can edit — not a dependency to work around.
+
+The `shadcn` package is **not installed**, which is why the command above pins
+`@latest` rather than running a local binary. It is a CLI with 34 transitive
+dependencies — the MCP SDK, Babel, ts-morph, dotenvx, a second copy of Zod — and it
+was 221 of the lockfile's 637 packages when it was a devDependency. Its only build
+input was one `@import` in `styles.css`, whose `@custom-variant` blocks are now
+copied in there directly.
+
+So after adding a component, run `bun run check`. **DEP-07** fails if the new file
+uses a `data-*` variant `styles.css` does not define — Tailwind compiles an
+undefined `data-open:` to `[data-open]`, which matches nothing on a Radix element,
+and the animation silently never plays. The fix is to copy that `@custom-variant`
+block across from [`shadcn/tailwind.css`](https://ui.shadcn.com/docs/theming).
 
 ## Conventions
 

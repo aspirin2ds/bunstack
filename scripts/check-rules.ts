@@ -129,9 +129,9 @@ check(async () => {
 /**
  * DEP-03 — no dependency outlives its last import, checked per workspace.
  *
- * CSS counts: shadcn/ui pulls `shadcn`, `tw-animate-css` and the Geist font in
- * through `@import` in `styles.css` and never from TypeScript. A check that read
- * only `.ts` files would report three false positives and get switched off.
+ * CSS counts: `tw-animate-css` and the Geist font come in through `@import` in
+ * `styles.css` and never from TypeScript. A check that read only `.ts` files
+ * would report them as false positives and get switched off.
  */
 check(async () => {
   const failures: string[] = []
@@ -167,6 +167,66 @@ check(async () => {
   }
 
   return { rule: 'DEP-03', what: 'no unused runtime dependencies', failures }
+})
+
+/**
+ * DEP-07 — a shadcn component may only use a `data-*` variant that `styles.css`
+ * defines. This is what keeps the `shadcn` package uninstalled.
+ *
+ * The failure it guards against is silent, which is the whole reason it exists.
+ * Tailwind 4 has a built-in `data-*` variant, so an undefined `data-open:`
+ * still compiles — to `[data-open]`. Radix sets `data-state="open"`, so the
+ * generated rule matches nothing and the animation just never plays. No error,
+ * no warning, no missing-class diagnostic: the stylesheet is simply wrong.
+ *
+ * `shadcn add` writes components against the upstream definitions, so pulling in
+ * a component that uses, say, `data-checked:` is exactly how this regresses.
+ */
+check(async () => {
+  const failures: string[] = []
+
+  // The variants `shadcn/tailwind.css` (4.15.0) redefines. Each maps a
+  // `data-<x>` name onto Radix's `data-state="<x>"` convention, so Tailwind's
+  // built-in fallback is not merely narrower — it targets a different attribute.
+  const OVERRIDDEN = [
+    'data-open',
+    'data-closed',
+    'data-checked',
+    'data-unchecked',
+    'data-selected',
+    'data-disabled',
+    'data-active',
+    'data-horizontal',
+    'data-vertical',
+  ]
+
+  const styles = await read(`${WEB}/src/styles.css`)
+  const defined = new Set(
+    [...styles.matchAll(/@custom-variant\s+([a-z][\w-]*)/g)].map((m) => m[1] as string),
+  )
+
+  for (const f of await sourcesOf(WEB)) {
+    const body = await read(`${WEB}/${f}`)
+
+    // A variant is a class-name segment ending in `:`, optionally behind
+    // composing prefixes (`group-data-open:`, `has-data-checked:`). One file
+    // typically uses the same variant many times — report it once.
+    const undefinedHere = new Set(
+      [...body.matchAll(/(?<![a-z0-9])(?:(?:group|peer|has|in|not)-)*(data-[a-z-]+):/g)]
+        .map((m) => m[1] as string)
+        .filter((v) => OVERRIDDEN.includes(v) && !defined.has(v)),
+    )
+
+    for (const variant of undefinedHere) {
+      failures.push(
+        `${WEB}/${f} uses ${variant}: but styles.css does not define it; ` +
+          `Tailwind would silently compile it to [${variant}] and match nothing — ` +
+          'copy the @custom-variant block from shadcn/tailwind.css',
+      )
+    }
+  }
+
+  return { rule: 'DEP-07', what: 'shadcn data-* variants are defined in styles.css', failures }
 })
 
 /** API-01 — resource routers keep route registrations in one chained expression. */
