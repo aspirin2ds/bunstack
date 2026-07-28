@@ -26,7 +26,7 @@
     "build": "bun run --filter '@repo/web' build",
     "typecheck": "bun run --filter './apps/*' --filter './packages/*' typecheck",
     "test": "bun run test:unit && bun run test:integration",
-    "test:unit": "bun run --filter '@repo/api' --filter '@repo/api-client' test:unit",
+    "test:unit": "bun run --filter '@repo/api' --filter '@repo/api-client' --filter '@repo/web' test:unit",
     "test:integration": "bun run --filter '@repo/api' test:integration",
     "lint": "bunx --bun biome check .",
     "lint:fix": "bunx --bun biome check --write .",

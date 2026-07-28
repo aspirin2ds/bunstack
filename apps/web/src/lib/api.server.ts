@@ -1,6 +1,7 @@
 import { createApiClient } from '@repo/api-client'
 
 import { env } from '../env.server.ts'
+import { currentRequestId, REQUEST_ID_HEADER } from './request-id.server.ts'
 
 /**
  * The web app's single connection to the API.
@@ -18,10 +19,30 @@ export const api = createApiClient({
   baseUrl: env.API_URL,
 
   /**
-   * A per-call deadline. Without one, a wedged API turns every page render into
+   * Two things every call gets.
+   *
+   * A per-call deadline: without one, a wedged API turns every page render into
    * a hung request that holds a connection until the client gives up — the same
    * reasoning as the API's own `timeout()` middleware (RULES.md OPS-05).
+   *
+   * And the browser request's id, so the API logs this call under the same
+   * `requestId` the web app logged the page under. See `request-id.server.ts`
+   * for why the header has to be exactly this one, and validated.
+   *
+   * Set on a `Headers` copy rather than spread into an object literal, because
+   * `init.headers` may be a `Headers` instance or an array of pairs — spreading
+   * either yields `{}` and drops whatever the caller passed.
    */
-  fetch: (input, init) =>
-    fetch(input, { ...init, signal: AbortSignal.timeout(env.API_TIMEOUT_MS) }),
+  fetch: (input, init) => {
+    const headers = new Headers(init?.headers)
+    const requestId = currentRequestId()
+
+    if (requestId) headers.set(REQUEST_ID_HEADER, requestId)
+
+    return fetch(input, {
+      ...init,
+      headers,
+      signal: AbortSignal.timeout(env.API_TIMEOUT_MS),
+    })
+  },
 })

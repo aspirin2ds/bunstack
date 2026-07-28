@@ -203,7 +203,7 @@ bun run update       # refresh upstream docs + compatible dependency updates + c
 bun run db:generate  bun run db:migrate     # no db:push / db:studio — see RULES.md BUN-05
 
 bun run test              # unit, then integration
-bun run test:unit         # API routes (service mocked) + api-client; no database
+bun run test:unit         # api routes + api-client + web lib; no database
 bun run test:integration  # API services against real Postgres; skips if none is up
 ```
 

@@ -333,7 +333,7 @@ bun run build         # vite build for the web app; the API needs no build step
 
 bun run typecheck     # all three workspaces
 bun run test              # unit, then integration
-bun run test:unit         # api routes (service mocked) + api-client; no database
+bun run test:unit         # api routes + api-client + web lib; no database
 bun run test:integration  # api services against real Postgres; skips if none is up
 
 bun run lint          # biome check (lint + format, read-only)
@@ -416,12 +416,23 @@ not be the only coverage a code path has: the unique-violation bug in
 [the landmines section](#2-the-sqlstate-is-on-errno-and-drizzle-wraps-the-error) lived in
 a service and was invisible to the mocked route tests.
 
-**The web app has no test suite of its own yet.** What covers it instead is the container
-smoke test in CI, which asserts a user created through the API appears in server-rendered
-HTML — that is the check that would catch the typed client breaking, the JSX transform
-regressing, or a workspace symlink not surviving into the release image. If you add
-component tests, note that `bun test` does not ship a DOM; TanStack's own examples use
-Vitest + jsdom for this.
+**The web app's suite covers server-side library code only** (`apps/web/src/lib/`), which
+is what `bun test` can run without a DOM. `request-id.server.test.ts` mocks
+`@tanstack/react-start/server` so `getRequest()` can be made to resolve a request or throw
+the way it does off-request, and it runs a stub on `API_URL` to assert what actually
+reaches the API. Its env comes from `apps/web/.env.test`, which Bun auto-loads under
+`NODE_ENV=test` — including the port that stub binds.
+
+Everything above that line is covered by the container smoke test in CI, which asserts a
+user created through the API appears in server-rendered HTML — that is the check that
+catches the typed client breaking, the JSX transform regressing, or a workspace symlink not
+surviving into the release image.
+
+**There are still no component tests**, and `bun test` ships no DOM, so adding them means
+Vitest + jsdom as in TanStack's own examples. Note the `mock.module` hazard applies within
+`apps/web` too: it replaces a module process-wide, so a second file mocking
+`@tanstack/react-start/server` would fight the first. That is why request id derivation and
+its propagation are tested in one file rather than two.
 
 ## Conventions
 

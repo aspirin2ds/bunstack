@@ -1,5 +1,6 @@
 import { env } from './src/env.server.ts'
 import { logger } from './src/lib/logger.server.ts'
+import { requestIdFor } from './src/lib/request-id.server.ts'
 
 /**
  * Production server for the built app.
@@ -112,7 +113,13 @@ const server = Bun.serve({
     try {
       return toNativeResponse(await handler.fetch(request))
     } catch (err) {
-      logger.error({ err, method: request.method, path: pathname }, 'unhandled request error')
+      // Same id the API calls made during this render were logged under —
+      // `requestIdFor` is keyed on the request object, so it resolves to the
+      // value `currentRequestId()` already handed to `api.server.ts`.
+      logger.error(
+        { err, requestId: requestIdFor(request), method: request.method, path: pathname },
+        'unhandled request error',
+      )
       return new Response('Internal Server Error', { status: 500 })
     }
   },
