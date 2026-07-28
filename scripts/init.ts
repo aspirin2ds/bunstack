@@ -189,7 +189,6 @@ async function main() {
       'apps/api/src/routes/users.test.ts',
       'apps/api/src/services/users.ts',
       'apps/api/tests/integration/users.service.test.ts',
-      'apps/api/src/routes/openapi.test.ts',
       // The web page consumes the API's users routes through the typed client, so
       // it cannot outlive them — with the routes gone it would not typecheck.
       'apps/web/src/routes/users.tsx',
@@ -355,7 +354,7 @@ next:
   docker compose up --build        # postgres -> migrate -> api -> web
 
   http://localhost:3001            # the web app
-  http://localhost:3000/docs       # API reference
+  http://localhost:3000/health     # API liveness
   bun run check                    # lint, rules, typecheck, tests
 
 layout:

@@ -8,7 +8,7 @@ import { hc } from 'hono/client'
 /**
  * Typed client for the API, inferred from the API's own route definitions.
  *
- * The inference only works because the API chains its `.openapi()` calls into a
+ * The inference only works because the API chains its Hono route methods into a
  * single expression (see `apps/api/src/routes/users.ts`); declaring handlers
  * separately would leave `AppType` without the route information and every call
  * here would degrade to `any`.

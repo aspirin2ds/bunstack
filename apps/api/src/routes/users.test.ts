@@ -176,6 +176,15 @@ describe('unknown routes', () => {
     expect(res.status).toBe(404)
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe('not_found')
   })
+
+  it('does not expose schema or reference endpoints', async () => {
+    for (const path of ['/openapi.json', '/docs']) {
+      const res = await app.request(path)
+
+      expect(res.status).toBe(404)
+      expect(((await res.json()) as { error: { code: string } }).error.code).toBe('not_found')
+    }
+  })
 })
 
 describe('security middleware', () => {

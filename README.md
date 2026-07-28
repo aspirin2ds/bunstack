@@ -4,7 +4,7 @@ A small, opinionated starting point for a two-service app in one repository:
 
 | Workspace | What it is |
 | --- | --- |
-| **`apps/api`** | [Hono](https://hono.dev) on [Bun](https://bun.com), [PostgreSQL](https://www.postgresql.org) via [Drizzle ORM](https://orm.drizzle.team) on Bun's native `bun:sql`, [Zod 4](https://zod.dev) validation, OpenAPI generated from the same schemas |
+| **`apps/api`** | [Hono](https://hono.dev) on [Bun](https://bun.com), [PostgreSQL](https://www.postgresql.org) via [Drizzle ORM](https://orm.drizzle.team) on Bun's native `bun:sql`, [Zod 4](https://zod.dev) request validation |
 | **`apps/web`** | [TanStack Start](https://tanstack.com/start) SSR with [shadcn/ui](https://ui.shadcn.com) and Tailwind 4 |
 | **`packages/api-client`** | A typed client **inferred from the API's own routes** — no schema duplication, no codegen step |
 
@@ -27,8 +27,8 @@ cd orders-app
 
 `bun create` downloads the repo, installs dependencies, initialises a fresh git
 repo, and then this template's `bun-create` postinstall hook runs
-`scripts/init.ts`, which renames every template identifier — package name,
-OpenAPI title, and database — to match your destination directory.
+`scripts/init.ts`, which renames every template identifier — package name and
+database — to match your destination directory.
 
 The renames land as **uncommitted changes** on top of `bun create`'s initial
 commit, so `git diff` shows you exactly what the bootstrap touched before you
@@ -114,7 +114,7 @@ for it to report healthy, and only then starts the web app.
 | | |
 | --- | --- |
 | http://localhost:3001 | the web app |
-| http://localhost:3000/docs | interactive API reference |
+| http://localhost:3000/health | API liveness |
 
 Each app owns its own `.env`. There is deliberately no root one — the web app
 having no `DATABASE_URL` should be visible at a glance.
@@ -136,7 +136,7 @@ The web app calls it from loaders and server functions only — `api.server.ts` 
 denied in the client bundle by Start's import protection, so `API_URL` (an internal
 hostname in compose) can never reach the browser. CI asserts that.
 
-This inference depends on the API chaining its `.openapi()` calls into one
+This inference depends on the API chaining its Hono route methods into one
 expression. Break the chain and `AppType` degrades to `unknown` — silently, with
 no error. That is why it is a rule, not a style preference.
 
@@ -144,8 +144,6 @@ no error. That is why it is a rule, not a style preference.
 
 | Method | Path | |
 | --- | --- | --- |
-| `GET` | `/docs` | interactive API reference |
-| `GET` | `/openapi.json` | OpenAPI 3.0 spec, generated from the route schemas |
 | `GET` | `/health` | process liveness, no database touched |
 | `GET` | `/health/db` | 200 if the database is reachable, else 503 |
 | `GET` | `/api/users` | `?limit=1..100&offset=0` |
@@ -200,6 +198,7 @@ bun run build        # vite build for the web app
 bun run typecheck    # all three workspaces
 bun run lint         # bun run lint:fix
 bun run check        # lint + rules + typecheck + tests — before committing
+bun run update       # refresh upstream docs + compatible dependency updates + check
 
 bun run db:generate  bun run db:migrate     # no db:push / db:studio — see RULES.md BUN-05
 
@@ -242,16 +241,15 @@ Dependencies point one way at every level: `routes → services → db` inside t
 and `web → api-client → api` across workspaces. Biome and `bun run check:rules`
 enforce both.
 
-## API documentation
+## Type-safe API contract
 
-Routes are declared with `createRoute()` from `@hono/zod-openapi`, so the same Zod
-schema validates the request **and** describes it in the spec — the docs cannot drift
-from the implementation. Browse them at `/docs`, or point a code generator at
-`/openapi.json`.
+Routes chain Hono methods and `zValidator()` middleware in one expression. Zod validates
+requests at runtime, while Hono infers request and response types directly for
+`hc<AppType>`—there is no generated schema or codegen step.
 
-Adding a route means adding a `createRoute({...})` block with its response codes, then
-`.openapi(route, handler)`. `apps/api/src/routes/openapi.test.ts` asserts the document
-stays well-formed, and CI runs `redocly lint` over it.
+Adding a route means chaining its method, validator, and inline handler in
+`apps/api/src/routes/`. Keep the chain intact: separately registered handlers still serve
+traffic, but disappear from the TypeScript client contract.
 
 ## Adding a table
 

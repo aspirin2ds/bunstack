@@ -32,6 +32,7 @@
     "lint:fix": "bunx --bun biome check --write .",
     "format": "bunx --bun biome format --write .",
     "check": "bun run lint && bun run check:rules && bun run typecheck && bun run test",
+    "update": "./scripts/fetch-docs.sh --force && bun update --recursive && bun install --frozen-lockfile && bun run check",
     "check:rules": "bun scripts/check-rules.ts",
     "db:generate": "bun run --filter '@repo/api' db:generate",
     "db:migrate": "bun run --filter '@repo/api' db:migrate",
