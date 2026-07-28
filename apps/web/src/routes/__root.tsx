@@ -74,8 +74,8 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       <body className="bg-background text-foreground min-h-svh antialiased">
         <div className="mx-auto flex min-h-svh max-w-3xl flex-col gap-8 px-6 py-10">
           <header className="flex items-baseline justify-between gap-4">
-            <Link to="/users" className="font-heading text-lg font-semibold tracking-tight">
-              bunstack
+            <Link to="/users" className="font-brand text-2xl tracking-tight">
+              Bunstack
             </Link>
             <nav className="text-muted-foreground text-sm">
               <Link to="/users" className="hover:text-foreground transition-colors">

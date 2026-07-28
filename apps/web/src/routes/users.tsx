@@ -77,7 +77,7 @@ function UsersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">Users</h1>
+          <h1 className="font-heading text-lg font-semibold tracking-tight">Users</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Served by the API at build-independent runtime, through the typed client.
           </p>

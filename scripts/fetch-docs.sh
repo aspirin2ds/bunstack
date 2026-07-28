@@ -48,8 +48,6 @@ drizzle/llms-full.txt	https://orm.drizzle.team/llms-full.txt
 zod/llms.txt	https://zod.dev/llms.txt
 vite/llms.txt	https://vite.dev/llms.txt
 vite/llms-full.txt	https://vite.dev/llms-full.txt
-nitro/llms.txt	https://nitro.build/llms.txt
-nitro/llms-full.txt	https://nitro.build/llms-full.txt
 react/llms.txt	https://react.dev/llms.txt
 shadcn/llms.txt	https://ui.shadcn.com/llms.txt
 shadcn/install-tanstack.md	https://ui.shadcn.com/docs/installation/tanstack.md
@@ -115,7 +113,8 @@ while IFS=$'\t' read -r path url; do
   mkdir -p "$(dirname "$out")"
 
   # Write to a temp file so a failed fetch never leaves a truncated doc behind.
-  if curl -sfL --max-time 120 "$url" -o "$out.tmp" && [ -s "$out.tmp" ]; then
+  if curl -sfL --retry 2 --retry-delay 1 --retry-all-errors --max-time 120 "$url" -o "$out.tmp" &&
+    [ -s "$out.tmp" ]; then
     mv "$out.tmp" "$out"
     report_ok "$path" "$out"
   else
@@ -136,7 +135,8 @@ fetch_bundle() {
 
   # Parsed with grep/sed rather than jq: this script has no dependency beyond
   # curl, and it may run before `bun install`.
-  names=$(curl -sfL --max-time 60 "$api" | grep -o '"name": *"[^"]*\.md"' | sed 's/.*"name": *"//; s/"$//' | sort)
+  names=$(curl -sfL --retry 2 --retry-delay 1 --retry-all-errors --max-time 60 "$api" |
+    grep -o '"name": *"[^"]*\.md"' | sed 's/.*"name": *"//; s/"$//' | sort)
 
   # An error payload (rate limit, moved directory) has no "name" fields at all.
   if [ -z "$names" ]; then
@@ -149,7 +149,8 @@ fetch_bundle() {
     [ -z "$name" ] && continue
     printf '\n\n<!-- ===== %s/%s ===== -->\n\n' "$dir" "$name" >>"$out.tmp"
 
-    if ! curl -sfL --max-time 60 "https://raw.githubusercontent.com/$repo/$ref/$dir/$name" >>"$out.tmp"; then
+    if ! curl -sfL --retry 2 --retry-delay 1 --retry-all-errors --max-time 60 \
+      "https://raw.githubusercontent.com/$repo/$ref/$dir/$name" >>"$out.tmp"; then
       return 1
     fi
   done <<<"$names"

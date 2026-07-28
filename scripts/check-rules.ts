@@ -169,13 +169,7 @@ check(async () => {
   return { rule: 'DEP-03', what: 'no unused runtime dependencies', failures }
 })
 
-/**
- * API-01 — the API's route modules declare endpoints via createRoute.
- *
- * Scoped to `apps/api/src/routes/` deliberately: `apps/web/src/routes/` is
- * TanStack Router's file-based route tree, where `createFileRoute` is correct and
- * this check would be nonsense.
- */
+/** API-01 — resource routers keep route registrations in one chained expression. */
 check(async () => {
   const failures: string[] = []
 
@@ -183,28 +177,17 @@ check(async () => {
     if (f.endsWith('.test.ts')) continue
 
     const body = await read(`${API}/${f}`)
-
-    // `.get(` also belongs to Headers, URLSearchParams, Map… so the receiver is
-    // checked rather than the method name alone. Two shapes to catch: a chained
-    // `.get(` at the start of a line, and an explicit `someRouter.get(`.
-    const NON_ROUTER = /^(headers|searchParams|params|query|cookies|map|cache|store|set|env|meta)$/i
     const VERBS = 'get|post|put|patch|delete'
 
-    for (const m of body.matchAll(new RegExp(`^\\s*\\.(${VERBS})\\(`, 'gm'))) {
-      failures.push(`${API}/${f} chains .${m[1]}() directly; use createRoute() + .openapi()`)
-    }
-
-    for (const m of body.matchAll(new RegExp(`(\\w+)\\.(${VERBS})\\(`, 'g'))) {
+    for (const m of body.matchAll(new RegExp(`^\\s*(\\w+)\\.(${VERBS})\\(`, 'gm'))) {
       const [, receiver, verb] = m as unknown as [string, string, string]
-      if (!NON_ROUTER.test(receiver)) {
-        failures.push(
-          `${API}/${f} calls ${receiver}.${verb}() directly; use createRoute() + .openapi()`,
-        )
-      }
+      failures.push(
+        `${API}/${f} calls ${receiver}.${verb}() after construction; chain it from new Hono()`,
+      )
     }
   }
 
-  return { rule: 'API-01', what: 'routes are declared through createRoute()', failures }
+  return { rule: 'API-01', what: 'resource routes stay in the inferred Hono chain', failures }
 })
 
 /** DB-02 — applied migrations are immutable. */

@@ -44,8 +44,7 @@ no `Response`, no status codes.
 `AppError`" is still on review.*
 
 **ARCH-04** 👁 Serialize at the route boundary. The database deals in `Date`; the wire
-format is ISO strings. `toResponse()` in `src/routes/users.ts` is the pattern, and the
-OpenAPI response schema type-checks that it happened.
+format is ISO strings. `toResponse()` in `src/routes/users.ts` is the pattern.
 
 **ARCH-05** 👁 Shared types that middleware needs (`AppEnv`) live in `src/lib/context.ts`,
 not `app.ts`, so middleware can type its context without an import cycle.
@@ -191,10 +190,10 @@ ships (DEP-02). Add one when there is caching or remote-execution evidence, and 
 
 ## API — Routes and HTTP
 
-**API-01** 🤖 Declare routes with `createRoute()` + `.openapi()`, not `app.get()`.
-*Why:* a plain `app.get` still serves traffic but is invisible to `/openapi.json`, so the
-published contract silently goes stale. Health and docs endpoints are the deliberate
-exceptions — they are infrastructure, not API surface.
+**API-01** 🤖 Build each resource router by chaining methods directly from `new Hono()`.
+Do not register routes later with `router.get(...)`.
+*Why:* the late registration still serves traffic but is absent from the router's inferred
+type, so `hc<AppType>` silently loses the endpoint.
 *Enforced by* `bun run check:rules`.
 
 **API-02** 👁 Chain route registrations in one expression. Hono's `hc` RPC client infers
@@ -212,10 +211,10 @@ such a route never runs.
 **API-05** 👁 Return `c.json(...)` from `notFound`, not `c.notFound()`, which breaks RPC
 type inference.
 
-**API-06** 👁 Every route documents the status codes it can actually return, including
-error codes. `src/routes/openapi.test.ts` pins these; update it deliberately.
+**API-06** 👁 Return explicit status codes from handlers so the Hono client infers the
+success response union accurately. Error responses continue to flow through `AppError`.
 
-**API-07** 👁 Mount new sub-apps with `app.route()`. One `OpenAPIHono` per resource.
+**API-07** 👁 Mount new sub-apps with `app.route()`. Use one chained `Hono` per resource.
 
 **API-08** 👁 Responses use the `{ data }` envelope on success and the shared `Error`
 envelope on failure. No bare arrays or scalars at the top level — it leaves no room to add
@@ -228,13 +227,8 @@ pagination metadata later without a breaking change.
 **VAL-01** 👁 Validate at the edge with a Zod schema on the route. Services trust their
 input because the boundary already checked it.
 
-**VAL-02** 👁 Validation failures flow through `defaultHook` in `src/app.ts`. Do not add
-per-route validation error handling — it forks the error envelope.
-
-**VAL-03** 🤖 Never use `z.unknown()` or `z.any()` in a **response** schema. It emits
-`nullable` with no `type`, which is invalid OpenAPI 3.0 (caught by `redocly lint`). Give
-the field a real shape.
-*Enforced by* `redocly lint` in CI.
+**VAL-02** 👁 Pass the shared `validationHook` from `src/lib/validation.ts` to every
+`zValidator()`. Do not add per-route validation error handling — it forks the error envelope.
 
 **VAL-04** 👁 Bound every user-supplied collection and string: `limit` has a max, strings
 have `.max()`. Unbounded pagination is a denial-of-service vector against your own
@@ -388,8 +382,7 @@ slow-but-valid request (see `src/index.ts`).
 permission problem go away.
 
 **SEC-07** 🔭 Authentication is not implemented. When added: authenticate in middleware,
-authorize in services (the service knows the domain rules), and register the scheme in the
-OpenAPI document so `/docs` reflects reality.
+authorize in services (the service knows the domain rules).
 
 **SEC-08** 🔭 Rate limiting is not implemented. When added, use
 [hono-rate-limiter](https://github.com/rhinobase/hono-rate-limiter) with a shared store —
@@ -558,7 +551,7 @@ When a 👁 rule turns out to be mechanically checkable, automate it and promote
 - **Import and syntax shapes** → a Biome rule in `biome.json`, scoped with `overrides`.
 - **Anything needing project knowledge** (file layout, cross-file consistency) → a check in
   `scripts/check-rules.ts`, named after the rule id.
-- **The OpenAPI contract** → `redocly lint` already runs in CI.
+- **HTTP route contracts** → focused route tests plus the `hc<AppType>` consumer typecheck.
 
 Then break the rule on purpose and confirm the tool fails. If it does not, the rule is
 still 👁 — say so rather than claiming otherwise.

@@ -133,15 +133,12 @@ Like `bun.com`, **every `ui.shadcn.com` docs page has a `.md` twin**.
 Components are **copied into the repo**, not imported from a dependency: `shadcn add` writes
 source files you then own and edit. Treat them as first-party code.
 
-### Vite and Nitro — `llms.txt`
+### Vite — `llms.txt`
 
-Start builds with Vite. **This template does not use Nitro**, so its docs are cached only as
-background: most Start hosting guides route through Nitro's deployment presets, and you need
-to recognise that path to know we deliberately took the other one. See
+Start builds with Vite. **This template does not use Nitro**; see
 [the web app's build](#the-web-apps-build-deliberately-has-no-nitro).
 
 - Vite — https://vite.dev/llms.txt, https://vite.dev/llms-full.txt
-- Nitro — https://nitro.build/llms.txt, https://nitro.build/llms-full.txt
 
 ### Tailwind CSS — no plain text
 
@@ -176,7 +173,7 @@ know what you need — Drizzle's full file alone is ~340k tokens.
 | HTTP | Hono 4 | Web-standard `Request`/`Response`, tiny, first-class Bun support |
 | Database | PostgreSQL 18 | — |
 | ORM | Drizzle over `drizzle-orm/bun-sql` | Typed schema, SQL-shaped queries, no extra pg client |
-| Validation + docs | Zod 4 via `@hono/zod-openapi` | One schema validates, types, **and** documents each route |
+| Validation | Zod 4 via `@hono/zod-validator` | Runtime request checks with inferred TypeScript inputs |
 | Lint/format | Biome 2 | Single fast tool; config matches the existing style |
 | Logging | pino 10 | Structured JSON to stdout; no built-in equivalent in Bun |
 | Web framework | TanStack Start 1 + Router | SSR with type-safe routing and server functions |
@@ -426,20 +423,17 @@ Paths below are relative to the app they belong to.
   Biome rejects a runtime import of `@repo/api`, or any `drizzle-orm` import, from
   `apps/web/src/**`.
 - **Chain routes for RPC type inference.** Hono's `hc` client only infers types from
-  chained `.openapi()` calls, not from separately-declared handlers. This is load-bearing
+  chained route methods, not from separately-declared handlers. This is load-bearing
   here, not stylistic: break the chain and `packages/api-client` silently degrades to
   `unknown` and the web app loses every type it has. See
   [best practices](https://hono.dev/docs/guides/best-practices).
-- **Declare routes with `createRoute()`**, not `app.get(...)` — the same Zod schema then
-  validates the request and documents it. A plain `app.get` still works but is invisible
-  to `/openapi.json`, so the docs quietly go stale.
-- **Validation errors flow through `defaultHook`** in `apps/api/src/app.ts`, which throws
-  `AppError`. Don't add per-route error handling; it would fork the error envelope.
+- **Validate route inputs with `zValidator()`** and keep each method in the inferred Hono
+  chain. The schema supplies both runtime validation and the TypeScript client input type.
+- **Validation errors use `validationHook`** from `apps/api/src/lib/validation.ts`, which
+  throws `AppError`. Don't add per-route error handling; it would fork the error envelope.
 - **Responses are serialized explicitly** (`toResponse` in `apps/api/src/routes/users.ts`):
-  the service layer deals in `Date`, the wire format is ISO strings, and the response schema
-  type-checks that the conversion happened.
-- **Avoid `z.unknown()` in response schemas** — it emits `nullable` with no `type`, which
-  is invalid OpenAPI 3.0. Give the field a real shape.
+  the service layer deals in `Date`, the wire format is ISO strings, and Hono infers that
+  return shape for the TypeScript client.
 - **Throw `AppError`**, don't return error responses ad hoc — `app.onError` renders the
   single JSON error shape. On the web side, `unwrap()` turns that envelope back into an
   `ApiError`, so a component never inspects `response.ok`.
