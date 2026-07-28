@@ -91,7 +91,7 @@ export type AppType = typeof routes
 app.doc('/openapi.json', {
   openapi: '3.0.0',
   info: {
-    title: 'bun-hono-postgres-template',
+    title: 'bunstack',
     version: '0.1.0',
     description: 'Example API. Every error uses the shared `Error` envelope.',
   },

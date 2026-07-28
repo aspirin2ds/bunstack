@@ -15,7 +15,7 @@
  */
 import { Glob } from 'bun'
 
-const TEMPLATE_NAME = 'bun-hono-postgres-template'
+const TEMPLATE_NAME = 'bunstack'
 const TEMPLATE_DB = 'appdb'
 
 /**

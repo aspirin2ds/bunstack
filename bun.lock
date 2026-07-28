@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "bun-hono-postgres-template",
+      "name": "bunstack",
       "devDependencies": {
         "@biomejs/biome": "^2.5.5",
       },

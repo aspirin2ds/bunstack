@@ -20,7 +20,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'bun-hono-postgres-template' },
+      { title: 'bunstack' },
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
@@ -75,7 +75,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <div className="mx-auto flex min-h-svh max-w-3xl flex-col gap-8 px-6 py-10">
           <header className="flex items-baseline justify-between gap-4">
             <Link to="/users" className="font-heading text-lg font-semibold tracking-tight">
-              bun-hono-postgres-template
+              bunstack
             </Link>
             <nav className="text-muted-foreground text-sm">
               <Link to="/users" className="hover:text-foreground transition-colors">

@@ -1,4 +1,4 @@
-# bun + hono + postgres + tanstack start monorepo template
+# bunstack
 
 A small, opinionated starting point for a two-service app in one repository:
 
@@ -21,7 +21,7 @@ server, so the whole repo runs on one runtime.
 Use Bun's own scaffolding CLI — one command, no extra tooling:
 
 ```bash
-bun create aspirin2ds/bun-hono-starter orders-app
+bun create aspirin2ds/bunstack orders-app
 cd orders-app
 ```
 
@@ -38,7 +38,7 @@ keep it.
 <summary>Other ways to get a copy</summary>
 
 ```bash
-bunx degit aspirin2ds/bun-hono-starter orders-app   # no history, no hook
+bunx degit aspirin2ds/bunstack orders-app   # no history, no hook
 git clone --depth 1 … && rm -rf .git                # manual
 ```
 
