@@ -9,6 +9,8 @@ import {
 } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
+import { ModeToggle } from '@/components/mode-toggle'
+import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 
 // `?url` plus the triple-slash directive above is how Start's Vite build wants a
@@ -67,29 +69,34 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   const isPending = useRouterState({ select: (state) => state.isLoading })
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body className="bg-background text-foreground min-h-svh antialiased">
-        <div className="mx-auto flex min-h-svh max-w-3xl flex-col gap-8 px-6 py-10">
-          <header className="flex items-baseline justify-between gap-4">
-            <Link to="/users" className="font-heading text-lg font-semibold tracking-tight">
-              bunstack
-            </Link>
-            <nav className="text-muted-foreground text-sm">
-              <Link to="/users" className="hover:text-foreground transition-colors">
-                Users
+        <ThemeProvider defaultTheme="system" storageKey="bunstack-theme">
+          <div className="mx-auto flex min-h-svh max-w-3xl flex-col gap-8 px-6 py-10">
+            <header className="flex items-center justify-between gap-4">
+              <Link to="/users" className="font-heading text-lg font-semibold tracking-tight">
+                bunstack
               </Link>
-            </nav>
-          </header>
+              <nav className="text-muted-foreground flex items-center gap-3 text-sm">
+                <Link to="/users" className="hover:text-foreground transition-colors">
+                  Users
+                </Link>
+                <ModeToggle />
+              </nav>
+            </header>
 
-          <main className={`flex-1 transition-opacity ${isPending ? 'opacity-60' : 'opacity-100'}`}>
-            {children}
-          </main>
-        </div>
+            <main
+              className={`flex-1 transition-opacity ${isPending ? 'opacity-60' : 'opacity-100'}`}
+            >
+              {children}
+            </main>
+          </div>
 
-        <Toaster />
+          <Toaster />
+        </ThemeProvider>
         <Scripts />
       </body>
     </html>
