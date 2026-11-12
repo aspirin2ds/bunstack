@@ -48,5 +48,5 @@ await run(['docker', 'compose', 'up', '-d', '--wait', 'postgres'])
 console.log('Applying database migrations...')
 await run(['bun', 'run', 'db:migrate'])
 
-console.log('Starting API on :3000 and web on :3001...')
+console.log('Starting API and web servers using their app-local environment settings...')
 await run(['bun', 'run', 'dev'])

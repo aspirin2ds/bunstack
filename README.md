@@ -94,12 +94,15 @@ cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 bun install
 
-bun run dev:up                  # database + migrations + api :3000 + web :3001
+bun run dev:up                  # database + migrations + api + web
 ```
 
 `dev:up` creates either `.env` file from its example when missing, waits for
 PostgreSQL to become healthy, applies migrations, and starts both apps. PostgreSQL
 stays running after `Ctrl-C`; stop it with `docker compose down`.
+
+Each app uses `PORT` from its own `.env` file. The defaults are API port 3000
+and web port 3001; set `PORT=8712` in `apps/web/.env` to move the web dev server.
 
 Or run the whole stack in containers:
 

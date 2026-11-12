@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bunx --bun vite dev --port 3001",
+    "dev": "bunx --bun vite dev",
     "build": "bunx --bun vite build",
     "start": "bun server.ts",
     "typecheck": "bunx --bun tsc --noEmit"

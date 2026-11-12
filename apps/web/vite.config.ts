@@ -12,12 +12,18 @@ import { defineConfig } from 'vite'
  * `resolve.tsconfigPaths` is Vite's built-in reader for the `paths` block in
  * tsconfig.json — the separate `vite-tsconfig-paths` plugin is not needed.
  */
-export default defineConfig({
-  resolve: {
-    tsconfigPaths: true,
-  },
-  server: {
-    port: 3001,
-  },
-  plugins: [tailwindcss(), tanstackStart(), viteReact()],
+export default defineConfig(async ({ command }) => {
+  // Bun loads the app-local .env before Vite runs. Validate runtime settings for
+  // dev only: production builds do not have (or need) a runtime API_URL yet.
+  const port = command === 'serve' ? (await import('./src/env.server.ts')).env.PORT : undefined
+
+  return {
+    resolve: {
+      tsconfigPaths: true,
+    },
+    server: {
+      port,
+    },
+    plugins: [tailwindcss(), tanstackStart(), viteReact()],
+  }
 })
