@@ -4,13 +4,13 @@ import { cors } from 'hono/cors'
 import { HTTPException } from 'hono/http-exception'
 import { requestId } from 'hono/request-id'
 import { secureHeaders } from 'hono/secure-headers'
-import { timeout } from 'hono/timeout'
 
-import { checkDatabase } from './db/index.ts'
+import { checkDatabase, isStatementTimeout } from './db/index.ts'
 import { env, isProduction } from './env.ts'
 import type { AppEnv } from './lib/context.ts'
 import { AppError, type ErrorCode, toErrorBody } from './lib/errors.ts'
 import { logger } from './lib/logger.ts'
+import { requestDeadline } from './middleware/deadline.ts'
 import { requestLogger } from './middleware/logging.ts'
 import { usersRoutes } from './routes/users.ts'
 
@@ -38,7 +38,10 @@ if (env.CORS_ORIGINS.length > 0) {
   app.use('*', cors({ origin: env.CORS_ORIGINS, credentials: true }))
 }
 
-// Reject oversized bodies before they are buffered or parsed.
+// Start the deadline before bodyLimit reads chunked uploads.
+app.use('*', requestDeadline(env.REQUEST_TIMEOUT_MS))
+
+// Reject oversized bodies before validation or parsing.
 app.use(
   '*',
   bodyLimit({
@@ -48,9 +51,6 @@ app.use(
     },
   }),
 )
-
-// Bound every request so a stuck query cannot hold a connection forever.
-app.use('*', timeout(env.REQUEST_TIMEOUT_MS))
 
 app.get('/health', (c) => c.json({ status: 'ok' }))
 
@@ -81,6 +81,11 @@ app.onError((err, c) => {
 
   if (err instanceof AppError) {
     return c.json(toErrorBody(err, requestId), err.status)
+  }
+
+  if (isStatementTimeout(err)) {
+    const error = new AppError('timeout', 'Database statement timed out')
+    return c.json(toErrorBody(error, requestId), 504)
   }
 
   if (err instanceof HTTPException) {

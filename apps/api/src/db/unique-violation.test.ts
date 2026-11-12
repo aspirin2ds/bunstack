@@ -1,6 +1,24 @@
 import { describe, expect, it } from 'bun:test'
 
-import { isUniqueViolation } from './index.ts'
+import { isStatementTimeout, isUniqueViolation } from './index.ts'
+
+describe('isStatementTimeout', () => {
+  it('recognizes a wrapped PostgreSQL statement timeout', () => {
+    const cause = Object.assign(new Error('canceling statement due to statement timeout'), {
+      code: 'ERR_POSTGRES_SERVER_ERROR',
+      errno: '57014',
+    })
+    expect(isStatementTimeout(new Error('Failed query', { cause }))).toBe(true)
+    expect(
+      isStatementTimeout(
+        Object.assign(new Error('canceling statement due to user request'), {
+          errno: '57014',
+        }),
+      ),
+    ).toBe(false)
+    expect(isStatementTimeout(bunPostgresError())).toBe(false)
+  })
+})
 
 /**
  * Regression tests. The shapes below were captured from a live Postgres 18 via

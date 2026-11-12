@@ -1,5 +1,5 @@
 import { ApiError, unwrap, unwrapEmpty } from '@repo/api-client'
-import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { Loader2, Trash2 } from 'lucide-react'
 import { useState } from 'react'
@@ -38,9 +38,20 @@ import { EmptyState } from './__root.tsx'
  * all live in the API; duplicating any of it here would mean two implementations
  * to keep in step (RULES.md ARCH-02, applied across services).
  */
-const listUsers = createServerFn().handler(async () => {
-  return await unwrap(await api.api.users.$get({ query: {} }))
-})
+const PageSearch = z.object({ page: z.coerce.number().int().min(1).max(1_000_000).catch(1) })
+const PAGE_SIZE = 20
+
+const listUsers = createServerFn()
+  .validator(PageSearch)
+  .handler(async ({ data: { page } }) => {
+    // One extra row determines whether Next is available without a count query.
+    const users = await unwrap(
+      await api.api.users.$get({
+        query: { limit: String(PAGE_SIZE + 1), offset: String((page - 1) * PAGE_SIZE) },
+      }),
+    )
+    return { users: users.slice(0, PAGE_SIZE), hasNext: users.length > PAGE_SIZE }
+  })
 
 /**
  * The schema mirrors the API's `CreateUser` bounds so the form can report a
@@ -65,13 +76,25 @@ const deleteUser = createServerFn({ method: 'POST' })
   })
 
 export const Route = createFileRoute('/users')({
-  loader: () => listUsers(),
+  validateSearch: (search: Record<string, unknown>) => PageSearch.parse(search),
+  loaderDeps: ({ search }) => ({ page: search.page }),
+  loader: ({ deps }) => listUsers({ data: deps }),
   component: UsersPage,
 })
 
 function UsersPage() {
-  const users = Route.useLoaderData()
+  const { users, hasNext } = Route.useLoaderData()
+  const { page } = Route.useSearch()
+  const navigate = Route.useNavigate()
   const router = useRouter()
+
+  function onDeleted() {
+    if (users.length === 1 && page > 1) {
+      void navigate({ search: { page: page - 1 } })
+    } else {
+      void router.invalidate()
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -86,7 +109,12 @@ function UsersPage() {
       </div>
 
       {users.length === 0 ? (
-        <EmptyState title="No users yet" description="Create the first one to see it here." />
+        <EmptyState
+          title={page === 1 ? 'No users yet' : 'No users on this page'}
+          description={
+            page === 1 ? 'Create the first one to see it here.' : 'Go to the previous page.'
+          }
+        />
       ) : (
         <div className="border-border overflow-x-auto rounded-lg border">
           <Table>
@@ -107,11 +135,7 @@ function UsersPage() {
                     {formatDate(user.createdAt)}
                   </TableCell>
                   <TableCell>
-                    <DeleteUserButton
-                      id={user.id}
-                      name={user.name}
-                      onDeleted={() => router.invalidate()}
-                    />
+                    <DeleteUserButton id={user.id} name={user.name} onDeleted={onDeleted} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -119,6 +143,27 @@ function UsersPage() {
           </Table>
         </div>
       )}
+      <nav aria-label="Users pagination" className="flex items-center justify-between gap-4">
+        <Button variant="outline" disabled={page === 1} asChild={page > 1}>
+          {page > 1 ? (
+            <Link to="/users" search={{ page: page - 1 }}>
+              Previous
+            </Link>
+          ) : (
+            'Previous'
+          )}
+        </Button>
+        <span className="text-muted-foreground text-sm">Page {page}</span>
+        <Button variant="outline" disabled={!hasNext} asChild={hasNext}>
+          {hasNext ? (
+            <Link to="/users" search={{ page: page + 1 }}>
+              Next
+            </Link>
+          ) : (
+            'Next'
+          )}
+        </Button>
+      </nav>
     </div>
   )
 }

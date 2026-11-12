@@ -27,7 +27,7 @@ const EnvSchema = z.object({
     .int()
     .positive()
     .default(1024 * 1024),
-  // Request deadline; exceeding it returns 504.
+  // HTTP deadline and PostgreSQL per-statement timeout (independent clocks).
   REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 
   /**

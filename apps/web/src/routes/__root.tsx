@@ -83,11 +83,15 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <ThemeProvider defaultTheme="system" storageKey="bunstack-theme">
           <div className="mx-auto flex min-h-svh max-w-3xl flex-col gap-8 px-6 py-10">
             <header className="flex items-center justify-between gap-4">
-              <Link to="/users" className="font-brand text-2xl tracking-tight">
+              <Link to="/users" search={{ page: 1 }} className="font-brand text-2xl tracking-tight">
                 Bunstack
               </Link>
               <nav className="text-muted-foreground flex items-center gap-3 text-sm">
-                <Link to="/users" className="hover:text-foreground transition-colors">
+                <Link
+                  to="/users"
+                  search={{ page: 1 }}
+                  className="hover:text-foreground transition-colors"
+                >
                   Users
                 </Link>
                 <ModeToggle />

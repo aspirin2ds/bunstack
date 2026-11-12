@@ -89,7 +89,7 @@ services:
       test:
         [
           'CMD-SHELL',
-          'bun -e "if (!(await fetch(\"http://localhost:3001/users\")).ok) throw new Error(\"unhealthy\")"',
+          'bun -e "if (!(await fetch(\"http://localhost:3001/health\")).ok) throw new Error(\"unhealthy\")"',
         ]
       interval: 10s
       timeout: 5s

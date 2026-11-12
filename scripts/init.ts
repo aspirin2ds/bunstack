@@ -233,6 +233,7 @@ function Home() {
     const rootPath = 'apps/web/src/routes/__root.tsx'
     const root = (await Bun.file(rootPath).text())
       .replaceAll('to="/users"', 'to="/"')
+      .replaceAll(' search={{ page: 1 }}', '')
       .replace(/(\n\s*)Users(\n\s*<\/Link>)/, '$1Home$2')
     await Bun.write(rootPath, root)
 
@@ -335,6 +336,19 @@ describe.skipIf(!reachable)('database', () => {
         ? '  regenerated apps/web/src/routeTree.gen.ts'
         : '  could not regenerate the route tree — run `bun run build` before `bun run check`',
     )
+  }
+
+  // Renaming identifiers can change wrapping in YAML/TSX. Keep generated output
+  // immediately lintable when dependencies are already installed.
+  if (await Bun.file('node_modules/.bin/biome').exists()) {
+    const formatted = Bun.spawnSync(['bun', 'run', 'format'], {
+      stdout: 'ignore',
+      stderr: 'ignore',
+    })
+    if (formatted.exitCode !== 0)
+      fail('formatting failed; run bun run format before checking the scaffold')
+  } else {
+    console.log('  run bun install && bun run format to format the renamed scaffold')
   }
 
   // -------------------------------------------------------------- next steps

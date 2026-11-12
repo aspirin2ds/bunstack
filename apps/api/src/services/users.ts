@@ -30,7 +30,12 @@ export interface ListUsersOptions {
 }
 
 export async function listUsers({ limit, offset }: ListUsersOptions): Promise<User[]> {
-  return db.select().from(users).orderBy(asc(users.createdAt)).limit(limit).offset(offset)
+  return db
+    .select()
+    .from(users)
+    .orderBy(asc(users.createdAt), asc(users.id))
+    .limit(limit)
+    .offset(offset)
 }
 
 export async function getUser(id: string): Promise<User> {

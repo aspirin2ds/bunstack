@@ -17,6 +17,9 @@ export const db = drizzle({
     idleTimeout: env.DB_IDLE_TIMEOUT,
     connectionTimeout: env.DB_CONNECTION_TIMEOUT,
     maxLifetime: env.DB_MAX_LIFETIME,
+    // HTTP timeouts do not cancel SQL. PostgreSQL must stop long-running statements
+    // itself so a blocked query cannot keep a pooled connection indefinitely.
+    connection: { statement_timeout: env.REQUEST_TIMEOUT_MS },
   },
 })
 
@@ -37,6 +40,27 @@ export async function checkDatabase(): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+/** PostgreSQL's statement deadline, including Drizzle's wrapped driver errors. */
+export function isStatementTimeout(error: unknown): boolean {
+  for (let current = error, depth = 0; current && depth < 5; depth++) {
+    if (typeof current !== 'object') break
+    const { errno, code, message, cause } = current as {
+      errno?: unknown
+      code?: unknown
+      message?: unknown
+      cause?: unknown
+    }
+    if (
+      (errno === '57014' || code === '57014') &&
+      typeof message === 'string' &&
+      message.includes('statement timeout')
+    )
+      return true
+    current = cause
+  }
+  return false
 }
 
 /** Postgres SQLSTATE for a unique-constraint violation. */

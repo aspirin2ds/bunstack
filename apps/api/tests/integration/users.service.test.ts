@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 
-import { closeDatabase } from '../../src/db/index.ts'
+import { closeDatabase, db } from '../../src/db/index.ts'
 import { AppError } from '../../src/lib/errors.ts'
 import * as users from '../../src/services/users.ts'
 import { isPostgresReachable, setupTestDatabase, truncateAll } from '../helpers/database.ts'
@@ -105,6 +105,46 @@ describe.skipIf(!reachable)('users service (integration)', () => {
     it('returns an empty array past the end', async () => {
       await expect(users.listUsers({ limit: 10, offset: 99 })).resolves.toEqual([])
     })
+
+    it('uses id to break timestamp ties across page boundaries', async () => {
+      // Give every row the same timestamp so only the secondary ordering can help.
+      await db.$client`update users set created_at = '2026-01-01T00:00:00Z'`
+      const expected = (await db.$client`select id from users order by id`).map(
+        (row: { id: string }) => row.id,
+      )
+      const first = await users.listUsers({ limit: 2, offset: 0 })
+      const second = await users.listUsers({ limit: 2, offset: 2 })
+      expect([...first, ...second].map((row) => row.id)).toEqual(expected)
+    })
+  })
+
+  it('stops a long query and releases the connection for subsequent work', async () => {
+    // A separate process boots the actual app pool with a short deadline, without
+    // changing the pool used by the rest of this suite.
+    const child = Bun.spawn(
+      [
+        Bun.argv[0]!,
+        '-e',
+        `
+      import { db, closeDatabase } from './src/db/index.ts'
+      try {
+        let cancelled = false
+        try { await db.$client\`select pg_sleep(1)\` }
+        catch (error) { if (error.errno !== '57014') throw error; cancelled = true }
+        if (!cancelled) throw new Error('statement was not cancelled')
+        const rows = await db.$client\`select 1 as ok\`
+        if (rows[0].ok !== 1) throw new Error('pool did not recover')
+      } finally { await closeDatabase() }
+      `,
+      ],
+      {
+        env: { ...Bun.env, REQUEST_TIMEOUT_MS: '50', DB_POOL_MAX: '1' },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    )
+    const output = await new Response(child.stderr).text()
+    expect(await child.exited, output).toBe(0)
   })
 
   describe('updateUser', () => {

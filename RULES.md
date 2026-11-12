@@ -250,7 +250,8 @@ migrations disagree.
 
 **DB-02** 🤖 Never hand-edit a file in `drizzle/`. Generate a new migration instead —
 editing one that has already been applied desynchronises every environment.
-_Enforced by_ `bun run check:rules`.
+_Enforced by_ `bun run check:rules` against HEAD locally, and `--base <merge-base>`
+in CI so committed edits are checked as well.
 
 **DB-03** 👁 `db:push` is a local prototyping tool. Never run it against an environment you
 care about; it skips migration history.
@@ -372,7 +373,12 @@ signals a misunderstanding.
 **SEC-03** 👁 Keep `bodyLimit()` ahead of any body parsing, so oversized payloads are
 rejected before they are buffered.
 
-**SEC-04** 👁 Every request has a deadline (`timeout()`). Keep `Bun.serve`'s `idleTimeout`
+**SEC-04** 👁 Every request has a deadline (`requestDeadline()`, wrapping Hono's
+`timeout()`) before body buffering. Expiry cancels the upload reader. HTTP deadlines
+do not cancel handler work: PostgreSQL's `statement_timeout` separately bounds each
+statement to `REQUEST_TIMEOUT_MS`, including lock waits. A statement started late can
+outlive the HTTP response; a 504 is not proof that a write did not commit.
+Keep `Bun.serve`'s `idleTimeout`
 above it — its 10s default is shorter than the 30s request timeout and will sever a
 slow-but-valid request (see `src/index.ts`).
 

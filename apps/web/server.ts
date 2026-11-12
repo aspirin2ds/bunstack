@@ -92,6 +92,11 @@ const server = Bun.serve({
   async fetch(request) {
     const { pathname } = new URL(request.url)
 
+    // Process liveness must work even when the API is unavailable or examples are removed.
+    if (pathname === '/health' && (request.method === 'GET' || request.method === 'HEAD')) {
+      return Response.json({ status: 'ok' })
+    }
+
     // Static assets first, because nothing else serves them: the build output
     // contains the files but no file server, and Start's handler 404s them. A
     // miss here falls through, so Start still owns real 404s and the SPA routes.

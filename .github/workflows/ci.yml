@@ -41,6 +41,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -56,7 +58,15 @@ jobs:
       # deps, route declaration style, migration immutability, workspace
       # boundaries, Bun-vs-Node APIs).
       - name: Rule checks
-        run: bun run check:rules
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -n "$BASE_REF" ] && [ "$BASE_REF" != "0000000000000000000000000000000000000000" ]; then
+            base=$(git merge-base "$BASE_REF" HEAD)
+            bun run check:rules --base "$base"
+          else
+            bun run check:rules
+          fi
 
       # Covers all three workspaces. The web app's typecheck is the one that
       # proves the typed API client still resolves across the workspace boundary.
@@ -101,6 +111,13 @@ jobs:
             exit 1
           fi
 
+      - name: Check the bare scaffold
+        run: bun run check:scaffold
+
+      - name: Check production web pagination
+        if: hashFiles('apps/web/src/routes/users.tsx') != ''
+        run: bun run check:web
+
   docker:
     name: docker build + stack smoke test
     runs-on: ubuntu-latest
@@ -127,7 +144,14 @@ jobs:
       # Uses jq, not bun: this job deliberately has no Bun toolchain, because it
       # tests the built images the way a deployment would. jq is preinstalled on
       # GitHub-hosted runners.
-      - name: Smoke test the API
+      - name: Smoke test service health
+        run: |
+          curl -fsS http://localhost:3000/health
+          curl -fsS http://localhost:3000/health/db
+          curl -fsS http://localhost:3001/health
+
+      - name: Smoke test the example API
+        if: hashFiles('apps/api/src/routes/users.ts') != ''
         run: |
           set -euo pipefail
           curl -fsS http://localhost:3000/health
@@ -156,22 +180,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          # / redirects to /users.
-          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/)
-          [ "$code" = "307" ] || { echo "expected 307 from /, got $code"; exit 1; }
-
-          html=$(curl -fsS http://localhost:3001/users)
+          # Follow the example redirect, or render the bare scaffold's landing page.
+          html=$(curl -fLsS http://localhost:3001/)
 
           # `if` rather than `grep ... && { exit 1; }`: under `set -e` a failing
           # grep in an AND-list takes the whole script down, so the negative
           # assertions below would "pass" by aborting the step.
-          if ! grep -q 'CI User' <<<"$html"; then
-            echo "user not server-rendered; web is not reaching the API"; exit 1
-          fi
-          if ! grep -q 'ci@example.com' <<<"$html"; then
-            echo "email missing from SSR output"; exit 1
-          fi
-
           # The dev JSX transform in a production image renders nothing but
           # "jsxDEV is not a function" — assert the build was a production build.
           if grep -q 'jsxDEV' <<<"$html"; then
@@ -193,6 +207,13 @@ jobs:
           [ "$code" = "404" ] || { echo "path traversal not refused, got $code"; exit 1; }
 
           echo "web smoke test passed"
+
+      - name: Smoke test example SSR
+        if: hashFiles('apps/web/src/routes/users.tsx') != ''
+        run: |
+          html=$(curl -fLsS http://localhost:3001/users)
+          grep -q 'CI User' <<<"$html"
+          grep -q 'ci@example.com' <<<"$html"
 
       - name: Dump logs on failure
         if: failure()

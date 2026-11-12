@@ -9,6 +9,7 @@
  * because it makes a rule look enforced when it is not.
  */
 import { Glob } from 'bun'
+import { editedMigrations } from './lib/migrations.ts'
 
 type Result = { rule: string; what: string; failures: string[] }
 
@@ -196,21 +197,12 @@ check(async () => {
   // migration. Adding one is the normal workflow, and wholesale removal is what
   // `scripts/init.ts --bare` does when resetting the template — neither is the
   // hazard DB-02 guards against.
-  const proc = Bun.spawnSync([
-    'git',
-    'diff',
-    '--name-only',
-    '--diff-filter=M',
-    'HEAD',
-    '--',
-    `${API}/drizzle`,
-  ])
-
-  const failures = proc.stdout
-    .toString()
-    .split('\n')
-    .filter((l) => l.endsWith('.sql'))
-    .map((f) => `${f} was edited; generate a new migration instead`)
+  const baseIndex = Bun.argv.indexOf('--base')
+  const base = baseIndex === -1 ? 'HEAD' : Bun.argv[baseIndex + 1]
+  if (!base) throw new Error('--base requires a Git revision')
+  const failures = editedMigrations(base).map(
+    (f) => `${f} was edited; generate a new migration instead`,
+  )
 
   return { rule: 'DB-02', what: 'committed migrations are never edited', failures }
 })

@@ -469,6 +469,9 @@ back:
 - The pool is configured explicitly (`max`, `idleTimeout`, `connectionTimeout`,
   `maxLifetime`) rather than relying on `max: 10`. Keep `DB_POOL_MAX × replicas` below
   Postgres `max_connections` (default 100).
+- `requestDeadline()` runs before body buffering and cancels stalled uploads.
+  PostgreSQL's `statement_timeout` independently bounds SQL to `REQUEST_TIMEOUT_MS`;
+  the HTTP timeout alone cannot cancel queries or guarantee a write was rolled back.
 - **There is no in-app shutdown hook** (OPS-06). Bun still has no native signal listener,
   only Node's `process.on`, so SIGTERM is left to the runtime. `closeDatabase()` exists for
   explicit lifecycle points — migrations and tests. Since Bun 1.4, `server.stop()` itself
