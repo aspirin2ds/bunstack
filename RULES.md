@@ -9,12 +9,12 @@ source of truth**; if the two disagree, this one wins and `CLAUDE.md` should be 
 
 ## How to read a rule
 
-| Mark | Meaning |
-| --- | --- |
-| 🤖 | A tool fails on it — Biome, TypeScript, `bun run check:rules`, or CI. You will not merge a violation by accident. |
-| 🤖/👁 | Partly automated; the rest is on review. The note says which part. |
-| 👁 | Nobody checks it but a human. These are the ones worth reviewing for. |
-| 🔭 | Not implemented in this template yet; the rule applies when you add the feature. |
+| Mark | Meaning                                                                                                           |
+| ---- | ----------------------------------------------------------------------------------------------------------------- |
+| 🤖   | A tool fails on it — Biome, TypeScript, `bun run check:rules`, or CI. You will not merge a violation by accident. |
+| 🤖/👁 | Partly automated; the rest is on review. The note says which part.                                                |
+| 👁    | Nobody checks it but a human. These are the ones worth reviewing for.                                             |
+| 🔭   | Not implemented in this template yet; the rule applies when you add the feature.                                  |
 
 Every 🤖 rule here has been **mutation-tested** — a violation was introduced and the tool
 confirmed to fail on it. A check that cannot fail is worse than no check, because it makes
@@ -29,19 +29,19 @@ rule — say so in a comment at the site, and cite the id. Silent violations are
 
 **ARCH-01** 🤖 Dependencies point one way: `routes → services → db`. A service must never
 import from `hono`, and a route must never import from `src/db/`.
-*Why:* it is what lets the service layer be tested against a real database with no HTTP
+_Why:_ it is what lets the service layer be tested against a real database with no HTTP
 context, and routes be tested with no database. Break it and both test suites lose meaning.
-*Enforced by* Biome `noRestrictedImports`, per-directory.
+_Enforced by_ Biome `noRestrictedImports`, per-directory.
 
 **ARCH-02** 👁 Business logic lives in a service, not a route handler. A handler should
 parse, delegate, and serialize — nothing else.
-*Why:* logic in handlers is only reachable through HTTP, so it tends to get tested through
+_Why:_ logic in handlers is only reachable through HTTP, so it tends to get tested through
 mocks that assert nothing about the logic.
 
 **ARCH-03** 🤖/👁 Services take and return plain data, and throw `AppError`. No `Context`,
 no `Response`, no status codes.
-*The import ban makes the HTTP types unreachable; "returns plain data and throws
-`AppError`" is still on review.*
+_The import ban makes the HTTP types unreachable; "returns plain data and throws
+`AppError`" is still on review._
 
 **ARCH-04** 👁 Serialize at the route boundary. The database deals in `Date`; the wire
 format is ISO strings. `toResponse()` in `src/routes/users.ts` is the pattern.
@@ -61,30 +61,30 @@ Overflow answer reaches for first.
 **BUN-01** 🤖 Application code uses Bun and Web APIs exclusively. Node.js built-in
 modules are forbidden, including compatibility modules for which Bun has no direct replacement.
 
-| Instead of | Use |
-| --- | --- |
-| `node:fs`, `node:fs/promises` | `Bun.file()`, `Bun.write()`, `Bun.Glob` |
-| `node:http`, `node:https` | `Bun.serve()`, `fetch()` |
-| `node:child_process` | `Bun.spawn()`, `Bun.$` |
-| `node:crypto` | the WebCrypto `crypto` global, `Bun.hash`, `Bun.password` |
-| `node:net`, `node:tls` | `Bun.connect()`, `Bun.listen()` |
-| `node:zlib` | `Bun.gzipSync()`, `Bun.inflateSync()` |
-| `node:test`, `node:assert` | `bun:test` and its `expect()` |
-| `node:readline` | `Bun.stdin`, the `prompt()` global |
-| `process.env` | `Bun.env` |
-| `pg`, `postgres` | `bun:sql` — see DEP-01 |
-| `bunx <cli>` | `bunx --bun <cli>` — see BUN-04 |
+| Instead of                    | Use                                                       |
+| ----------------------------- | --------------------------------------------------------- |
+| `node:fs`, `node:fs/promises` | `Bun.file()`, `Bun.write()`, `Bun.Glob`                   |
+| `node:http`, `node:https`     | `Bun.serve()`, `fetch()`                                  |
+| `node:child_process`          | `Bun.spawn()`, `Bun.$`                                    |
+| `node:crypto`                 | the WebCrypto `crypto` global, `Bun.hash`, `Bun.password` |
+| `node:net`, `node:tls`        | `Bun.connect()`, `Bun.listen()`                           |
+| `node:zlib`                   | `Bun.gzipSync()`, `Bun.inflateSync()`                     |
+| `node:test`, `node:assert`    | `bun:test` and its `expect()`                             |
+| `node:readline`               | `Bun.stdin`, the `prompt()` global                        |
+| `process.env`                 | `Bun.env`                                                 |
+| `pg`, `postgres`              | `bun:sql` — see DEP-01                                    |
+| `bunx <cli>`                  | `bunx --bun <cli>` — see BUN-04                           |
 
-*Why:* Bun's compatibility layer makes Node.js APIs easy to introduce accidentally. A
+_Why:_ Bun's compatibility layer makes Node.js APIs easy to introduce accidentally. A
 single runtime vocabulary makes runtime assumptions visible and mechanically reviewable.
 When Bun has no direct equivalent, use a Web API or a small local implementation; do not
 open an exception silently.
-*Enforced by* `bun run check:rules`, which rejects every Node.js builtin import and the
+_Enforced by_ `bun run check:rules`, which rejects every Node.js builtin import and the
 compatibility globals, plus Biome `noProcessEnv`.
 
 **BUN-02** 🤖 Do not use compatibility globals such as `process`, `Buffer`, or the
 `NodeJS` namespace. Use `Bun.env`, `Bun.argv`, `Bun.$`, Web typed arrays, and Web APIs.
-*Enforced by* `bun run check:rules`.
+_Enforced by_ `bun run check:rules`.
 
 **BUN-03** 👁 Prefer Web standards when the Bun API surface does not cover a task. For
 example, `apps/web/server.ts` resolves static assets with `new URL(...)`, which also
@@ -92,17 +92,17 @@ collapses `..` segments per RFC 3986 for the traversal guard in SEC-05.
 
 **BUN-04** 🤖 Run JavaScript and TypeScript CLIs through **`bunx --bun`**. This applies
 inside package scripts and CI as well as at the terminal.
-*Why:* bunx honours the CLI's shebang, so plain `bunx drizzle-kit` runs a Node binary under
+_Why:_ bunx honours the CLI's shebang, so plain `bunx drizzle-kit` runs a Node binary under
 Node — and `drizzle.config.ts` then dies with a bare `Bun is not defined`, which reads as a
 broken config rather than the wrong runtime. `--bun` forces the Bun runtime, which is what
 lets the config use `Bun.env` like everything else. Verified both ways on drizzle-kit
 0.31.10.
-*Enforced by* `bun run check:rules` for package scripts; CI uses the same spelling.
+_Enforced by_ `bun run check:rules` for package scripts; CI uses the same spelling.
 
 **BUN-05** 👁 `drizzle-kit push` and `drizzle-kit studio` do not work in this stack, and the
 scripts for them have been removed rather than left broken.
-*Why:* both need a Node Postgres driver — they fail with *"please install either of 'pg',
-'postgres', '@neondatabase/serverless' or '@vercel/postgres'"* — and DEP-01 forbids adding
+_Why:_ both need a Node Postgres driver — they fail with _"please install either of 'pg',
+'postgres', '@neondatabase/serverless' or '@vercel/postgres'"_ — and DEP-01 forbids adding
 one. `--bun` does not help; the driver requirement is independent of the runtime. Use
 `db:generate` + `db:migrate`, which go through Bun's own client. If you truly want Studio,
 adding `pg` as a **devDependency** is the only justification for it in this repo — say so in
@@ -118,50 +118,50 @@ Layout: `apps/api` (Hono + Postgres), `apps/web` (TanStack Start), `packages/api
 
 **WS-01** 🤖/👁 `apps/*` are deployable processes; `packages/*` are libraries consumed by
 them. An app never imports another app's source.
-*Why:* it is what keeps "two services" from decaying into one service in two directories.
+_Why:_ it is what keeps "two services" from decaying into one service in two directories.
 The moment `apps/web` reaches into `apps/api/src`, they can no longer be built, tested or
 deployed apart.
-*Biome blocks the web app from importing `@repo/api` (anything but `/types`); "packages
-hold no deployable process" is on review.*
+_Biome blocks the web app from importing `@repo/api` (anything but `/types`); "packages
+hold no deployable process" is on review._
 
 **WS-02** 🤖 Reference a sibling workspace as `"workspace:*"`, never a relative path or a
 `file:` URL.
-*Why:* Bun then links the local directory instead of resolving from npm, and `bun publish`
+_Why:_ Bun then links the local directory instead of resolving from npm, and `bun publish`
 substitutes the real version. A relative import bypasses the dependency graph, so
 `--filter` build ordering silently stops applying to it.
-*Enforced by* `bun run check:rules`, which rejects an import path climbing into
+_Enforced by_ `bun run check:rules`, which rejects an import path climbing into
 `../../apps/` or `../../packages/`.
 
 **WS-03** 🤖 A dependency used by two or more workspaces is pinned once in the root
 `workspaces.catalog` and referenced as `"catalog:"`.
-*Why:* two `package.json` files drift. Zod, TypeScript and React resolving to different
+_Why:_ two `package.json` files drift. Zod, TypeScript and React resolving to different
 majors across the API and the web app produces type errors that read as unrelated bugs.
-*Enforced by* `bun run check:rules`, in both directions — a literal version in two
+_Enforced by_ `bun run check:rules`, in both directions — a literal version in two
 packages fails, and so does a catalog entry nothing references. It caught `pino` and
 `pino-pretty` the day it was written.
 
 **WS-04** 🤖 The root `package.json` declares no runtime dependencies — it is the workspace
 manifest and script entry point only.
-*Why:* `--production` prunes root `devDependencies`, so a runtime import satisfied only by
+_Why:_ `--production` prunes root `devDependencies`, so a runtime import satisfied only by
 the root resolves in dev and fails in the release image.
-*Enforced by* `bun run check:rules`.
+_Enforced by_ `bun run check:rules`.
 
 **WS-05** 🤖/👁 The web app talks to the API over HTTP through the typed client. It may import
 `apps/api` **types** (`import type`), never its runtime code, and it holds no
 `DATABASE_URL`.
-*Why:* the type-only import is what makes the contract checked at compile time; a runtime
+_Why:_ the type-only import is what makes the contract checked at compile time; a runtime
 import would pull Hono, Drizzle and the database pool into the web process and give the
 front end database credentials it has no reason to hold.
-*Biome bans `@repo/api` and `drizzle-orm` under `apps/web/src/**`, and CI asserts the
+_Biome bans `@repo/api` and `drizzle-orm` under `apps/web/src/**`, and CI asserts the
 internal `API_URL` never appears in served HTML. "Holds no `DATABASE_URL`" is on review —
-`apps/web/.env.example` is where to look.*
+`apps/web/.env.example` is where to look._
 
 **WS-06** 🤖 Declare what you import, in the `package.json` of the workspace that imports
 it. Do not rely on a dependency being visible because something else installed it.
-*Why:* Bun defaults new workspaces to the **isolated** linker, which makes phantom
+_Why:_ Bun defaults new workspaces to the **isolated** linker, which makes phantom
 dependencies fail to resolve rather than working by accident. This is the rule the linker
 is enforcing for us, so state it plainly.
-*Enforced by* the linker itself. This is not theoretical: `types: ["bun-types"]` worked in
+_Enforced by_ the linker itself. This is not theoretical: `types: ["bun-types"]` worked in
 the single-package repo only because `bun-types` was hoisted, and every workspace failed to
 typecheck until it became `types: ["bun"]`, naming the `@types/bun` each package declares.
 
@@ -169,12 +169,12 @@ typecheck until it became `types: ["bun"]`, naming the `@types/bun` each package
 
 **WS-08** 🤖/👁 A release image that copies `node_modules` must copy the workspace sources at
 the same relative paths, in the same stage.
-*Why:* under the isolated linker `node_modules` is symlinks into `node_modules/.bun/`, and
+_Why:_ under the isolated linker `node_modules` is symlinks into `node_modules/.bun/`, and
 **workspace packages are symlinked to their source directories**. Copy the links without
 their targets and the image fails at startup with a module-not-found error that mentions
 nothing about symlinks. Verify with the compose smoke test, not by reading the Dockerfile —
 see the LAND lesson.
-*The same trap applies to a **build** stage, and there it is silent rather than loud:*
+_The same trap applies to a **build** stage, and there it is silent rather than loud:_
 `apps/web`'s build needs `apps/api/node_modules`, because it type-imports the API's source,
 which resolves Hono and Zod from the API's own tree. Omitting it produced no error — `AppType`
 degraded to `unknown` and the failure surfaced as "Type may not be serializable" on unrelated
@@ -182,7 +182,7 @@ server functions. CI's stack smoke test is what covers this; the Dockerfiles can
 
 **WS-09** 👁 Run scripts with `bun run --filter`, and let Bun order them. Do not add a task
 orchestrator to get dependency-ordered builds.
-*Why:* `bun --filter '*' build` already waits for a dependency's build before starting its
+_Why:_ `bun --filter '*' build` already waits for a dependency's build before starting its
 consumer's. Turbo or Nx would be a new dependency buying a feature the package manager
 ships (DEP-02). Add one when there is caching or remote-execution evidence, and say so.
 
@@ -192,14 +192,14 @@ ships (DEP-02). Add one when there is caching or remote-execution evidence, and 
 
 **API-01** 🤖 Build each resource router by chaining methods directly from `new Hono()`.
 Do not register routes later with `router.get(...)`.
-*Why:* the late registration still serves traffic but is absent from the router's inferred
+_Why:_ the late registration still serves traffic but is absent from the router's inferred
 type, so `hc<AppType>` silently loses the endpoint.
-*Enforced by* `bun run check:rules`.
+_Enforced by_ `bun run check:rules`.
 
 **API-02** 👁 Chain route registrations in one expression. Hono's `hc` RPC client infers
 types only from a chained builder, not from separately-declared handlers.
 ([best practices](https://hono.dev/docs/guides/best-practices))
-*No tool catches this* — unchained routes still serve traffic, they just quietly stop
+_No tool catches this_ — unchained routes still serve traffic, they just quietly stop
 producing client types.
 
 **API-03** 👁 Write handlers inline after the path. Do not extract "controllers" — it
@@ -250,7 +250,7 @@ migrations disagree.
 
 **DB-02** 🤖 Never hand-edit a file in `drizzle/`. Generate a new migration instead —
 editing one that has already been applied desynchronises every environment.
-*Enforced by* `bun run check:rules`.
+_Enforced by_ `bun run check:rules`.
 
 **DB-03** 👁 `db:push` is a local prototyping tool. Never run it against an environment you
 care about; it skips migration history.
@@ -259,7 +259,7 @@ care about; it skips migration history.
 interpolation, which parameterises. **Never** interpolate user input into `sql.raw()` or
 `.unsafe()` — those bypass escaping entirely
 ([docs](https://orm.drizzle.team/docs/sql)).
-*Exception:* identifiers (table/database names) cannot be parameterised. The two uses in
+_Exception:_ identifiers (table/database names) cannot be parameterised. The two uses in
 `tests/helpers/database.ts` are the sanctioned pattern — values come from the Postgres
 catalog or are quote-escaped, never from a request.
 
@@ -312,11 +312,11 @@ context. An empty catch needs a comment explaining why the failure is genuinely 
 **LOG-01** 🤖 Never `console.*` **in `src/`** — including one-off scripts like
 `src/db/migrate.ts`, whose output lands in the same log stream as the app's. Use
 `c.get('logger')` inside a request, `logger` from `src/lib/logger.ts` elsewhere.
-*Why:* console output is unstructured and drops the `requestId`, so it cannot be
+_Why:_ console output is unstructured and drops the `requestId`, so it cannot be
 correlated or queried.
-*Scope:* test harness notices under `tests/` may use `console` — that output is for a
+_Scope:_ test harness notices under `tests/` may use `console` — that output is for a
 human watching a test run, not for a log aggregator.
-*Enforced by* Biome `noConsole` (off under `tests/`).
+_Enforced by_ Biome `noConsole` (off under `tests/`).
 
 **LOG-02** 👁 Do not add a pino `transport`. It spawns a worker thread for no benefit when
 the destination is stdout, and worker threads are the historical friction point for pino
@@ -340,20 +340,20 @@ not add ad-hoc "entering handler" logs.
 
 **CFG-01** 🤖 All configuration goes through `src/env.ts`. Never read `Bun.env`
 elsewhere.
-*Why:* the schema fails the process at boot on bad config, instead of at 3am on the first
+_Why:_ the schema fails the process at boot on bad config, instead of at 3am on the first
 request that happens to need the variable.
-*Enforced by* review for direct `Bun.env` reads and by the environment modules' schemas.
+_Enforced by_ review for direct `Bun.env` reads and by the environment modules' schemas.
 
 **CFG-02** 🤖 New config gets a Zod type, a sane default where one exists, and an entry in
 `.env.example`. Required-with-no-default is correct for anything that has no safe default
 (`DATABASE_URL`).
-*Enforced by* `bun run check:rules`.
+_Enforced by_ `bun run check:rules`.
 
 **CFG-03** 👁 Never commit `.env`. It is git-ignored; keep it that way. `.env.example`
 carries the shape, never real values.
 
 **CFG-04** 👁 Defaults must be safe for production, not convenient for development. CORS
-defaults to *not mounted*; the body limit defaults to 1 MiB.
+defaults to _not mounted_; the body limit defaults to 1 MiB.
 
 **CFG-05** 👁 Bun-only assumption is deliberate: `Bun.env` is read once at boot rather
 than Hono's portable `c.env`. Revisit if this ever targets Cloudflare Workers.
@@ -403,8 +403,8 @@ test — a mocked route test proves nothing about the SQL.
 module for the whole process, so a single `bun test` feeds the integration tests the mock
 and they pass while testing nothing. Never collapse the scripts back into a bare
 `bun test`, and never put an integration test under `src/`.
-*The `test:unit` / `test:integration` split makes the separation structural, but nothing
-catches an integration test filed under `src/` — that part is on review.*
+_The `test:unit` / `test:integration` split makes the separation structural, but nothing
+catches an integration test filed under `src/` — that part is on review._
 
 **TEST-03** 🤖 CI asserts integration tests were not skipped. They self-skip when no
 database is reachable — without the assertion, an unreachable database looks green.
@@ -474,12 +474,12 @@ supply chain, install time, and a Bun-compatibility question.
 
 **DEP-03** 🤖 Remove a dependency the moment it stops being used, and delete the code it
 supported. `@hono/zod-validator` and `src/lib/validate.ts` went together.
-*Enforced by* `bun run check:rules`.
+_Enforced by_ `bun run check:rules`.
 
 **DEP-04** 👁 `bun.lock` is committed, and CI installs with `--frozen-lockfile`.
 
 **DEP-05** 👁 Run `bun audit` periodically.
-*Note:* it could not be verified from this sandbox (TLS egress is blocked); confirm it
+_Note:_ it could not be verified from this sandbox (TLS egress is blocked); confirm it
 works in your environment before relying on it in CI.
 
 **DEP-06** 👁 Verify a library actually works **on Bun**, in a container, before adopting
@@ -520,7 +520,7 @@ Both were found the hard way in this repository. Full write-ups in `CLAUDE.md`.
 obvious `error.code === '23505'` never matches and a duplicate key surfaces as a 500.
 Mitigated by DB-08.
 
-*The lesson generalises, and is the reason both were caught:* **verify against the real
+_The lesson generalises, and is the reason both were caught:_ **verify against the real
 runtime.** Neither was visible to typechecking, unit tests, or reading the code.
 
 ---

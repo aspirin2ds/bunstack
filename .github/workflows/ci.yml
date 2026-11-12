@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  BUN_VERSION: '1.3.14'
+  BUN_VERSION: '1.4.4'
 
 jobs:
   check:
@@ -40,7 +40,7 @@ jobs:
       API_URL: http://localhost:3000
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # Builds the API's `test` stage, which runs typecheck and unit tests in-image.
       - name: Build API image (runs in-image checks)

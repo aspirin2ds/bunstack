@@ -2,11 +2,11 @@
 
 A small, opinionated starting point for a two-service app in one repository:
 
-| Workspace | What it is |
-| --- | --- |
-| **`apps/api`** | [Hono](https://hono.dev) on [Bun](https://bun.com), [PostgreSQL](https://www.postgresql.org) via [Drizzle ORM](https://orm.drizzle.team) on Bun's native `bun:sql`, [Zod 4](https://zod.dev) request validation |
-| **`apps/web`** | [TanStack Start](https://tanstack.com/start) SSR with [shadcn/ui](https://ui.shadcn.com) and Tailwind 4 |
-| **`packages/api-client`** | A typed client **inferred from the API's own routes** — no schema duplication, no codegen step |
+| Workspace                 | What it is                                                                                                                                                                                                      |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`apps/api`**            | [Hono](https://hono.dev) on [Bun](https://bun.com), [PostgreSQL](https://www.postgresql.org) via [Drizzle ORM](https://orm.drizzle.team) on Bun's native `bun:sql`, [Zod 4](https://zod.dev) request validation |
+| **`apps/web`**            | [TanStack Start](https://tanstack.com/start) SSR with [shadcn/ui](https://ui.shadcn.com) and Tailwind 4                                                                                                         |
+| **`packages/api-client`** | A typed client **inferred from the API's own routes** — no schema duplication, no codegen step                                                                                                                  |
 
 The interesting part is the seam: `apps/web` calls the API over HTTP through
 `hc<AppType>`, so renaming a field in a route makes the web app fail to compile.
@@ -111,9 +111,9 @@ That builds both images, waits for Postgres to pass its health check, runs
 migrations to completion in a one-shot `migrate` service, starts the API, waits
 for it to report healthy, and only then starts the web app.
 
-| | |
-| --- | --- |
-| http://localhost:3001 | the web app |
+|                              |              |
+| ---------------------------- | ------------ |
+| http://localhost:3001        | the web app  |
 | http://localhost:3000/health | API liveness |
 
 Each app owns its own `.env`. There is deliberately no root one — the web app
@@ -142,15 +142,15 @@ no error. That is why it is a rule, not a style preference.
 
 ## Endpoints
 
-| Method | Path | |
-| --- | --- | --- |
-| `GET` | `/health` | process liveness, no database touched |
-| `GET` | `/health/db` | 200 if the database is reachable, else 503 |
-| `GET` | `/api/users` | `?limit=1..100&offset=0` |
-| `POST` | `/api/users` | `{ email, name }` |
-| `GET` | `/api/users/:id` | |
-| `PATCH` | `/api/users/:id` | `{ email?, name? }` |
-| `DELETE` | `/api/users/:id` | 204 |
+| Method   | Path             |                                            |
+| -------- | ---------------- | ------------------------------------------ |
+| `GET`    | `/health`        | process liveness, no database touched      |
+| `GET`    | `/health/db`     | 200 if the database is reachable, else 503 |
+| `GET`    | `/api/users`     | `?limit=1..100&offset=0`                   |
+| `POST`   | `/api/users`     | `{ email, name }`                          |
+| `GET`    | `/api/users/:id` |                                            |
+| `PATCH`  | `/api/users/:id` | `{ email?, name? }`                        |
+| `DELETE` | `/api/users/:id` | 204                                        |
 
 Every error shares one envelope:
 
@@ -171,9 +171,17 @@ Structured JSON to stdout via pino, one object per line, with a per-request chil
 bound to the request id:
 
 ```json
-{"level":"warn","time":"2026-07-27T08:49:16.471Z","pid":1,"hostname":"...",
- "requestId":"3f92ce1b-…","req":{"method":"GET","path":"/nope"},
- "res":{"status":404},"durationMs":0.289,"msg":"GET /nope 404"}
+{
+  "level": "warn",
+  "time": "2026-07-27T08:49:16.471Z",
+  "pid": 1,
+  "hostname": "...",
+  "requestId": "3f92ce1b-…",
+  "req": { "method": "GET", "path": "/nope" },
+  "res": { "status": 404 },
+  "durationMs": 0.289,
+  "msg": "GET /nope 404"
+}
 ```
 
 Both apps use the same configuration, the web app adding a `service: "web"` binding
@@ -217,7 +225,7 @@ silently feed the integration tests the mock instead of real SQL.
 apps/
   api/                  Hono + Postgres. Owns the database.
     src/
-      index.ts          Bun.serve + graceful shutdown
+      index.ts          Bun.serve entry point
       app.ts            Hono instance, middleware, onError/notFound
       env.ts            Zod-validated env, fails fast at boot
       types.ts          the only cross-workspace export — types only

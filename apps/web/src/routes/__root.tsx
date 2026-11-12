@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import {
   createRootRoute,
+  type ErrorComponentProps,
   HeadContent,
   Link,
   Outlet,
@@ -46,13 +47,18 @@ function RootComponent() {
  * envelope, which is safe to display: the API replaces unexpected error messages
  * with "Internal server error" in production (RULES.md ERR-04), so this cannot
  * leak a stack trace or a connection string.
+ *
+ * `error` is `unknown`, not `Error`: anything can be thrown, and the router types it
+ * that way. Narrow before reading `.message`.
  */
-function RootErrorComponent({ error }: { error: Error }) {
+function RootErrorComponent({ error }: ErrorComponentProps) {
+  const message = error instanceof Error ? error.message : String(error)
+
   return (
     <RootDocument>
       <EmptyState
         title="Something went wrong"
-        description={import.meta.env.PROD ? 'Please try again later.' : error.message}
+        description={import.meta.env.PROD ? 'Please try again later.' : message}
       />
     </RootDocument>
   )

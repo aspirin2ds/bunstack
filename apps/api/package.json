@@ -19,15 +19,15 @@
     "db:migrate": "bun src/db/migrate.ts"
   },
   "dependencies": {
-    "@hono/zod-validator": "^0.9.0",
-    "drizzle-orm": "^0.45.2",
+    "@hono/zod-validator": "^0.9.1",
+    "drizzle-orm": "^0.45.4",
     "hono": "catalog:",
     "pino": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
-    "drizzle-kit": "^0.31.10",
+    "drizzle-kit": "^0.31.11",
     "pino-pretty": "catalog:",
     "typescript": "catalog:"
   }

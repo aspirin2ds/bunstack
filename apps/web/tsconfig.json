@@ -6,8 +6,8 @@
     "jsx": "react-jsx",
 
     // shadcn/ui generates imports as `@/components/ui/button`; Vite resolves the
-    // same alias through `resolve.tsconfigPaths` reading this block.
-    "baseUrl": ".",
+    // same alias through `resolve.tsconfigPaths` reading this block. No `baseUrl`:
+    // TypeScript 7 removed it, and `paths` resolve relative to this file anyway.
     "paths": {
       "@/*": ["./src/*"]
     }

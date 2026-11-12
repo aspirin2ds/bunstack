@@ -9,8 +9,8 @@ import { logger } from './src/lib/logger.server.ts'
  * server has to. TanStack publishes a ~550-line reference implementation with
  * asset preloading and compression knobs — this is the simplified version their
  * docs invite you to write, adapted to this template's rules: env through
- * `env.server.ts` (CFG-01), pino instead of `console.log` (LOG-01), and a drained
- * shutdown (OPS-06).
+ * `env.server.ts` (CFG-01) and pino instead of `console.log` (LOG-01). Like the API,
+ * it has no in-app shutdown hook (OPS-06).
  *
  * Reach for the upstream version if you are serving large assets from this process
  * rather than from a CDN.
@@ -95,6 +95,10 @@ const server = Bun.serve({
     // Static assets first, because nothing else serves them: the build output
     // contains the files but no file server, and Start's handler 404s them. A
     // miss here falls through, so Start still owns real 404s and the SPA routes.
+    //
+    // Not Bun 1.4's `routes: { '/assets/*': { dir } }`: a directory route cannot set
+    // headers, so fingerprinted assets would lose `immutable`. A `Bun.file()` body
+    // gets the same ETag / 304 / Range handling from Bun anyway.
     if (request.method === 'GET' || request.method === 'HEAD') {
       const asset = resolveAsset(pathname)
 

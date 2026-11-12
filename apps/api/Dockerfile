@@ -6,7 +6,9 @@
 #
 # RULES.md OPS-01: WORKDIR is /usr/src/app, never /app. A directory at /app makes
 # `bun:sql` read the connection URL's path as a Unix socket (LAND-01).
-FROM oven/bun:1 AS base
+# Pinned to the 1.4 line, matching `engines.bun` and CI's BUN_VERSION: bun.lock is
+# lockfileVersion 2, which an older Bun cannot read with --frozen-lockfile.
+FROM oven/bun:1.4 AS base
 WORKDIR /usr/src/app
 
 # Manifests only, so a source-only change does not invalidate the install cache.

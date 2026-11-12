@@ -37,9 +37,9 @@ this — see the note under [TanStack](#tanstack-start--router--no-llmstxt).
 
 ### Bun — `llms.txt` + per-page markdown
 
-| Resource | URL |
-| --- | --- |
-| Index of all docs | https://bun.com/llms.txt |
+| Resource                       | URL                           |
+| ------------------------------ | ----------------------------- |
+| Index of all docs              | https://bun.com/llms.txt      |
 | Everything in one file (~2 MB) | https://bun.com/llms-full.txt |
 
 Bun's docs live on **`bun.com`** (not `bun.sh`) and **every page has a `.md` twin** —
@@ -49,7 +49,7 @@ resolve them from `llms.txt` rather than from memory (e.g. `docs/api/sql` is now
 
 - SQL / Postgres client — https://bun.com/docs/runtime/sql.md
 - Environment variables — https://bun.com/docs/runtime/environment-variables.md
-- `bun test` — https://bun.com/docs/test/index.md
+- `bun test` — https://bun.com/docs/test.md
 - Test mocks — https://bun.com/docs/test/mocks.md
 - Docker — https://bun.com/docs/guides/ecosystem/docker.md
 - `bunfig.toml` — https://bun.com/docs/runtime/bunfig.md
@@ -65,11 +65,11 @@ Monorepo — cached under `.online-docs/bun/pm-*.md`, and summarized in
 
 ### Hono — `llms.txt`
 
-| Resource | URL |
-| --- | --- |
-| Index | https://hono.dev/llms.txt |
-| Full docs, no examples | https://hono.dev/llms-full.txt |
-| Core only (smallest) | https://hono.dev/llms-small.txt |
+| Resource               | URL                             |
+| ---------------------- | ------------------------------- |
+| Index                  | https://hono.dev/llms.txt       |
+| Full docs, no examples | https://hono.dev/llms-full.txt  |
+| Core only (smallest)   | https://hono.dev/llms-small.txt |
 
 Hono pages do **not** support a `.md` suffix — use the `llms*.txt` files or the HTML pages.
 
@@ -81,9 +81,9 @@ Hono pages do **not** support a `.md` suffix — use the `llms*.txt` files or th
 
 ### Drizzle ORM — `llms.txt`
 
-| Resource | URL |
-| --- | --- |
-| Index | https://orm.drizzle.team/llms.txt |
+| Resource                                     | URL                                    |
+| -------------------------------------------- | -------------------------------------- |
+| Index                                        | https://orm.drizzle.team/llms.txt      |
 | Full docs (~340k tokens — fetch selectively) | https://orm.drizzle.team/llms-full.txt |
 
 - Drizzle + `bun:sql` — https://orm.drizzle.team/docs/get-started/bun-sql-new
@@ -104,12 +104,12 @@ of SPA shell. Do not cache or read that.
 The real source is markdown in the `TanStack/router` repo, which
 `scripts/fetch-docs.sh` concatenates per directory into greppable bundles:
 
-| Cached bundle | Upstream directory |
-| --- | --- |
-| `tanstack/start.md` | `docs/start/framework/react` |
-| `tanstack/start-guide.md` | `docs/start/framework/react/guide` |
-| `tanstack/router-guide.md` | `docs/router/guide` |
-| `tanstack/router-routing.md` | `docs/router/routing` |
+| Cached bundle                | Upstream directory                 |
+| ---------------------------- | ---------------------------------- |
+| `tanstack/start.md`          | `docs/start/framework/react`       |
+| `tanstack/start-guide.md`    | `docs/start/framework/react/guide` |
+| `tanstack/router-guide.md`   | `docs/router/guide`                |
+| `tanstack/router-routing.md` | `docs/router/routing`              |
 
 Each page is preceded by `<!-- ===== <dir>/<file>.md ===== -->`, so grep for that marker to
 see which page a hit came from. The bundles track `main` and can be ahead of the installed
@@ -167,41 +167,41 @@ know what you need — Drizzle's full file alone is ~340k tokens.
 
 ## Stack
 
-| Piece | Choice | Why |
-| --- | --- | --- |
-| Runtime | Bun 1.3 | Native TS, built-in test runner, native Postgres driver |
-| HTTP | Hono 4 | Web-standard `Request`/`Response`, tiny, first-class Bun support |
-| Database | PostgreSQL 18 | — |
-| ORM | Drizzle over `drizzle-orm/bun-sql` | Typed schema, SQL-shaped queries, no extra pg client |
-| Validation | Zod 4 via `@hono/zod-validator` | Runtime request checks with inferred TypeScript inputs |
-| Lint/format | Biome 2 | Single fast tool; config matches the existing style |
-| Logging | pino 10 | Structured JSON to stdout; no built-in equivalent in Bun |
-| Web framework | TanStack Start 1 + Router | SSR with type-safe routing and server functions |
-| Web build | Vite 8 | `resolve.tsconfigPaths` is built in — no `vite-tsconfig-paths` |
-| UI | shadcn/ui (radix) + Tailwind 4 | Components are copied in, so they are ours to edit |
-| Web→API | `hc` from `hono/client` | The API's `AppType` types every call; no schema duplication |
+| Piece         | Choice                             | Why                                                              |
+| ------------- | ---------------------------------- | ---------------------------------------------------------------- |
+| Runtime       | Bun 1.4                            | Native TS, built-in test runner, native Postgres driver          |
+| HTTP          | Hono 4                             | Web-standard `Request`/`Response`, tiny, first-class Bun support |
+| Database      | PostgreSQL 18                      | —                                                                |
+| ORM           | Drizzle over `drizzle-orm/bun-sql` | Typed schema, SQL-shaped queries, no extra pg client             |
+| Validation    | Zod 4 via `@hono/zod-validator`    | Runtime request checks with inferred TypeScript inputs           |
+| Lint/format   | Biome 2                            | Single fast tool; config matches the existing style              |
+| Logging       | pino 10                            | Structured JSON to stdout; no built-in equivalent in Bun         |
+| Web framework | TanStack Start 1 + Router          | SSR with type-safe routing and server functions                  |
+| Web build     | Vite 8                             | `resolve.tsconfigPaths` is built in — no `vite-tsconfig-paths`   |
+| UI            | shadcn/ui (radix) + Tailwind 4     | Components are copied in, so they are ours to edit               |
+| Web→API       | `hc` from `hono/client`            | The API's `AppType` types every call; no schema duplication      |
 
 The `bun-sql` driver uses Bun's **built-in** Postgres client, so there is deliberately no
 `pg` or `postgres` dependency. Do not add one.
 
 ## This is a Bun app — do not reach for Node APIs
 
-Bun's Node compatibility layer means the Node version usually *works*, which is precisely
+Bun's Node compatibility layer means the Node version usually _works_, which is precisely
 why this is a rule (RULES.md **BUN-01**/**BUN-02**) and not a preference. `bun run
 check:rules` fails the build on the left-hand column:
 
-| Don't | Do |
-| --- | --- |
-| `node:fs`, `node:fs/promises` | `Bun.file()`, `Bun.write()`, `Bun.Glob` |
-| `node:http`, `node:https` | `Bun.serve()`, `fetch()` |
-| `node:child_process` | `Bun.spawn()`, `Bun.$` |
-| `node:crypto` | the `crypto` global, `Bun.hash`, `Bun.password` |
-| `node:net`, `node:tls` | `Bun.connect()`, `Bun.listen()` |
-| `node:zlib` | `Bun.gzipSync()`, `Bun.inflateSync()` |
-| `node:test`, `node:assert` | `bun:test`, `expect()` |
-| `process.env` | **`Bun.env`** — Biome's `noProcessEnv` has no exemptions at all |
-| `pg`, `postgres` | `bun:sql` |
-| `bunx <cli>` | **`bunx --bun <cli>`** in any package.json script |
+| Don't                         | Do                                                              |
+| ----------------------------- | --------------------------------------------------------------- |
+| `node:fs`, `node:fs/promises` | `Bun.file()`, `Bun.write()`, `Bun.Glob`                         |
+| `node:http`, `node:https`     | `Bun.serve()`, `fetch()`                                        |
+| `node:child_process`          | `Bun.spawn()`, `Bun.$`                                          |
+| `node:crypto`                 | the `crypto` global, `Bun.hash`, `Bun.password`                 |
+| `node:net`, `node:tls`        | `Bun.connect()`, `Bun.listen()`                                 |
+| `node:zlib`                   | `Bun.gzipSync()`, `Bun.inflateSync()`                           |
+| `node:test`, `node:assert`    | `bun:test`, `expect()`                                          |
+| `process.env`                 | **`Bun.env`** — Biome's `noProcessEnv` has no exemptions at all |
+| `pg`, `postgres`              | `bun:sql`                                                       |
+| `bunx <cli>`                  | **`bunx --bun <cli>`** in any package.json script               |
 
 There are no Node.js API exceptions in application code. If Bun has no direct
 replacement, use a Web API or a small local implementation. In particular, do not use
@@ -219,8 +219,8 @@ package.json script that calls `bunx` without `--bun`. If you hit `Bun is not de
 inside a tool you did not write, `--bun` is the first thing to try.
 
 **`--bun` is not a cure-all.** `drizzle-kit push` and `drizzle-kit studio` fail regardless,
-because they need a Node Postgres driver (*"please install either of 'pg', 'postgres',
-…"*) and DEP-01 forbids adding one. Those scripts have been **removed** rather than left
+because they need a Node Postgres driver (_"please install either of 'pg', 'postgres',
+…"_) and DEP-01 forbids adding one. Those scripts have been **removed** rather than left
 broken — use `db:generate` + `db:migrate`, which go through Bun's own client. See BUN-05.
 
 When a Bun-native API is not available, check whether a **web standard** does the job.
@@ -244,7 +244,7 @@ Workspaces are a plain `package.json` field; Bun needs no extra config file and 
 {
   "workspaces": {
     "packages": ["apps/*", "packages/*"],
-    "catalog": { "typescript": "^5.9.0", "zod": "^4.4.3" }
+    "catalog": { "typescript": "^7.0.2", "zod": "^4.6.7" }
   }
 }
 ```
@@ -443,7 +443,7 @@ Paths below are relative to the app they belong to.
   `apps/web/src/env.server.ts` — reading `Bun.env` once at boot, never scattered lookups.
 - **Server-only web code ends in `.server.ts`.** Start's import protection denies those
   files in the client bundle, which is what keeps `API_URL` and the API client out of the
-  browser. It fails the build, but only *warns* in dev — so trust the build, not dev.
+  browser. It fails the build, but only _warns_ in dev — so trust the build, not dev.
 - **The web app calls the API from server functions and loaders**, never from the browser.
 
 ## Upstream best practices this template follows
@@ -452,6 +452,7 @@ Checked against the official docs (cached in `.online-docs/`), so don't "improve
 back:
 
 **Hono** ([best practices](https://hono.dev/docs/guides/best-practices))
+
 - Handlers are written inline after the path, not extracted into RoR-style controllers —
   extracting them loses path-param type inference. If you must split, use
   `factory.createHandlers()` from `hono/factory`.
@@ -464,16 +465,20 @@ back:
   cross-origin access it doesn't need).
 
 **Bun** ([SQL](https://bun.com/docs/runtime/sql.md), [server](https://bun.com/docs/runtime/http/server.md))
+
 - The pool is configured explicitly (`max`, `idleTimeout`, `connectionTimeout`,
   `maxLifetime`) rather than relying on `max: 10`. Keep `DB_POOL_MAX × replicas` below
   Postgres `max_connections` (default 100).
-- Shutdown awaits `server.stop()` then `db.$client.close({ timeout })`, so in-flight
-  requests finish and pooled connections are released.
+- **There is no in-app shutdown hook** (OPS-06). Bun still has no native signal listener,
+  only Node's `process.on`, so SIGTERM is left to the runtime. `closeDatabase()` exists for
+  explicit lifecycle points — migrations and tests. Since Bun 1.4, `server.stop()` itself
+  waits for in-flight requests, so a future native hook only needs to call it.
 - `Bun.serve`'s `idleTimeout` **defaults to 10s**, shorter than the 30s request timeout;
   `apps/api/src/index.ts` derives it from `REQUEST_TIMEOUT_MS` so the socket isn't cut out
   from under a slow-but-valid request.
 
 **Drizzle** ([migrations](https://orm.drizzle.team/docs/migrations))
+
 - Codebase-first with **generated, committed** SQL (their "Option 3"), applied at
   deploy time by the one-shot `migrate` service ("Option 4", which they recommend for
   monoliths and zero-downtime deploys). Their `db:push` prototyping flow is unavailable
@@ -483,6 +488,7 @@ back:
   query is measurably hot, not preemptively.
 
 **TanStack Start** ([hosting](https://tanstack.com/start/latest/docs/framework/react/guide/hosting))
+
 - `getRouter()` is a **factory**, not a shared instance — a module-level router would leak
   one request's loader data into the next.
 - Server-only modules use the `.server.ts` suffix, which Start's import protection denies in
@@ -498,13 +504,13 @@ one. This template does neither, following TanStack's own
 plain `vite build`, then a small Bun server (`apps/web/server.ts`) that serves `dist/client`
 and forwards everything else to the handler in `dist/server/server.js`.
 
-Two reasons. `nitro@3` is still a **beta** and this is a template others will build on. And
+Two reasons. `nitro@3` is still a **release candidate** and this is a template others will build on. And
 the whole repo already runs on Bun, so adding Nitro's server layer would mean two server
 abstractions to reason about instead of one.
 
 The upstream reference server is ~550 lines of asset preloading and compression knobs; ours
 is the simplification their docs explicitly invite, kept in line with this repo's rules
-(env through `env.server.ts`, pino not `console.log`, drained shutdown). If you outgrow it,
+(env through `env.server.ts`, pino not `console.log`). If you outgrow it,
 adopt the Nitro preset — and revisit `NODE_ENV` in the Dockerfile, which the current setup
 depends on.
 
@@ -567,12 +573,12 @@ and reachable (`Bun.connect` to the same host:port succeeds).
 
 Reproduced on Bun 1.3.14, Linux arm64:
 
-| Database name | `/<name>` exists | Result |
-| --- | --- | --- |
-| `app` | no | connects |
-| `app` | yes (`WORKDIR /app`) | `FailedToOpenSocket` |
-| `foo` | yes (`mkdir /foo`) | `FailedToOpenSocket` |
-| `postgres` | no | connects |
+| Database name | `/<name>` exists     | Result               |
+| ------------- | -------------------- | -------------------- |
+| `app`         | no                   | connects             |
+| `app`         | yes (`WORKDIR /app`) | `FailedToOpenSocket` |
+| `foo`         | yes (`mkdir /foo`)   | `FailedToOpenSocket` |
+| `postgres`    | no                   | connects             |
 
 This is why both Dockerfiles use **`WORKDIR /usr/src/app`, not `/app`**, and the database
 is named **`appdb`, not `app`**. Either change alone fixes it; both are kept so renaming

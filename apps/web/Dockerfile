@@ -3,7 +3,9 @@
 # Built from the *repository root* as context. The web app depends on
 # @repo/api-client, which type-imports @repo/api, so the build needs the whole
 # workspace present — not just apps/web.
-FROM oven/bun:1 AS base
+# Pinned to the 1.4 line, matching `engines.bun` and CI's BUN_VERSION: bun.lock is
+# lockfileVersion 2, which an older Bun cannot read with --frozen-lockfile.
+FROM oven/bun:1.4 AS base
 WORKDIR /usr/src/app
 
 FROM base AS manifests

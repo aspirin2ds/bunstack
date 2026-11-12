@@ -27,10 +27,12 @@ bun/llms.txt	https://bun.com/llms.txt
 bun/llms-full.txt	https://bun.com/llms-full.txt
 bun/runtime-sql.md	https://bun.com/docs/runtime/sql.md
 bun/http-server.md	https://bun.com/docs/runtime/http/server.md
+bun/http-routing.md	https://bun.com/docs/runtime/http/routing.md
 bun/http-metrics.md	https://bun.com/docs/runtime/http/metrics.md
 bun/http-error-handling.md	https://bun.com/docs/runtime/http/error-handling.md
 bun/environment-variables.md	https://bun.com/docs/runtime/environment-variables.md
-bun/test.md	https://bun.com/docs/test/index.md
+bun/test.md	https://bun.com/docs/test.md
+bun/test-parallel.md	https://bun.com/docs/test/parallel.md
 bun/test-mocks.md	https://bun.com/docs/test/mocks.md
 bun/docker.md	https://bun.com/docs/guides/ecosystem/docker.md
 bun/bunfig.md	https://bun.com/docs/runtime/bunfig.md
